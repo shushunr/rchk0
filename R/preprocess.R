@@ -92,7 +92,7 @@ preprocess <- function(datasets_pool, spec_path) {
         visit_label_col = x$visit_label_col
       )))
       pool <- setNames(lapply(., `[[`, "df"), map_chr(., "dataset"))
-      list(visit_info_df = info, datasets_pool = pool)
+      list(visit_info_df = info, data_list = pool)
     }
 }
 

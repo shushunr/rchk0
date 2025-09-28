@@ -12,92 +12,151 @@
 #' @importFrom stringr str_detect str_to_lower
 #' @importFrom dplyr mutate select filter arrange
 format_issue_log_sheets <- function(wb) {
-  sheets <- names(wb)[-1]  # exclude READ_ME
+  sheets <- names(wb)[-1]  # Exclude READ_ME
 
   # Define styles
-  header_style   <- openxlsx::createStyle(halign = "center", textDecoration = "bold", fontSize = 12, fgFill = "#D9D9D9")
-  content_style  <- openxlsx::createStyle(halign = "center", wrapText = TRUE)
-  blue_header    <- openxlsx::createStyle(halign = "center", textDecoration = "bold", fontSize = 12, fgFill = "#DDEBF7")
-  bold_readme    <- openxlsx::createStyle(textDecoration = "bold")
-  date_style     <- openxlsx::createStyle(numFmt = "yyyy-mm-dd", halign = "center")
-  closed_style   <- openxlsx::createStyle(fgFill = "#C6EFCE", textDecoration = "bold", halign = "center")
-  open_style     <- openxlsx::createStyle(fgFill = "#FFA500", textDecoration = "bold", halign = "center")
-  recurred_style <- openxlsx::createStyle(fgFill = "#FF6347", textDecoration = "bold", halign = "center")
+  header_style    <- createStyle(halign = "center", textDecoration = "bold", fontSize = 12, fgFill = "#D9D9D9")
+  content_style   <- createStyle(halign = "center", wrapText = TRUE)
+  blue_header     <- createStyle(halign = "center", textDecoration = "bold", fontSize = 12, fgFill = "#DDEBF7")
+  bold_readme     <- createStyle(textDecoration = "bold")
+  date_style      <- createStyle(numFmt = "yyyy-mm-dd", halign = "center")
+  closed_style    <- createStyle(fgFill = "#007A33", textDecoration = "bold", halign = "center")
+  open_style      <- createStyle(fgFill = "#FFA500", textDecoration = "bold", halign = "center")
+  recurred_style  <- createStyle(fgFill = "#FF6347", textDecoration = "bold", halign = "center")
+  highlight_cols  <- c("Issue_type", "Issue_noted_by_Lilly_Stats", "PPD_Comment_or_resolution", "Status")
+  bold_rows       <- c(1, 3, 5, 11, 13)
 
-  highlight_cols <- c("Issue_type", "Issue_noted_by_Lilly_Stats", "PPD_Comment_or_resolution", "Status")
-  bold_rows      <- c(1, 3, 11)
+  ## common cols kept in all datasets
+  common_cols <- c("Issue_type", "Issue_noted_by_Lilly_Stats",
+                   "PPD_Comment_or_resolution", "Status")
+  extra_cols_list <- list(
+    ae3001 = c("EVENT", "FORMEID", "FORMILB", "PT"),
+    cm1001 = c("EVENT", "CMTRT", "CMSTDAT", "PREFLABEL"),
+    cm2001 = c("EVENT", "CMTRT", "CMSTDAT", "EVENTDT"),
+    ds6001 = c("EVENT", "EVENTDT", "FORMEID"),
+    ex1001 = c("EVENT", "EVENTDT"),
+    i7pmcdsaf_cssrssla = c("CSSASMDAT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_dlqi = c("DLQIASMDT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_hads = c("HADSASMDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_hisqol = c("HISQOLDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_hsnrs = c("HSNRSDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM",
+                        "HSNRSRES4", "HSNRSRES3", "HSNRSRES1", "HSNRSRES2"),
+    i7pmcdsaf_itchnrs = c("INRSASMDT", "INRSASMTIM", "VISIT", "VISITNUM", "INRSRES1"),
+    i7pmcdsaf_lesion = c("DLADAT", "VISIT", "VISITNUM", "DLALOC", "DLALAT",
+                         "DLADIR", "DLARES1", "DLARES2", "DLARES3", "DLARES4", "DLARES5"),
+    i7pmcdsaf_pgic = c("PGICDAT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_pgis = c("PGISASMDAT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_promis7a = c("PROMISFA7DAT", "QSEVLINT", "VISIT", "VISITNUM"),
+    i7pmcdsaf_promis7b = c("PROMISSDSFBDAT", "PROMISSDSFBTIM","QSEVLINT", "VISIT",
+                           "VISITNUM"),
+    lili7pmcdsaf_pkhead_p = c("VISIT", "VISITNUM", "LBDTM", "PTMELTX"),
+    pr1001 = c("EVENT", "EVENTDT", "FORMDEF"),
+    sv1001 = c("EVENT", "EVENTDT", "VISITOCCUR")
+  )
 
   for (sheet in sheets) {
-    df <- openxlsx::readWorkbook(wb, sheet = sheet, detectDates = TRUE)
+    df <- readWorkbook(wb, sheet = sheet, detectDates = TRUE)
     df[sapply(df, inherits, "Date")] <- lapply(df[sapply(df, inherits, "Date")], as.character)
 
-    openxlsx::writeData(wb, sheet = sheet, x = df, startRow = 1, colNames = TRUE, withFilter = FALSE)
+    # --- keep & hide columns
+    ## Select necessary columns to keep, based on keep_cols_list
+    ## Select unnecessary columns to hide
+    if (sheet %in% names(extra_cols_list)) {
+      keep_cols <- c("SUBJECT_ID", "SITEID", extra_cols_list[[sheet]], common_cols)
 
-    # Auto column width
-    est_width <- pmax(nchar(colnames(df)), sapply(df, function(col) max(nchar(as.character(col)), na.rm = TRUE)))
-    openxlsx::setColWidths(wb, sheet = sheet, cols = 1:ncol(df), widths = pmin(est_width + 2, 50))
+      ordered_cols <- intersect(keep_cols, colnames(df))
+      other_cols   <- setdiff(colnames(df), ordered_cols)
+      df <- df[, c(ordered_cols, other_cols), drop = FALSE]
+
+      hide_cols <- which(!colnames(df) %in% keep_cols)
+    } else {
+      hide_cols <- NULL
+    }
+
+    writeData(wb, sheet = sheet, x = df, startRow = 1, colNames = TRUE, withFilter = FALSE)
+
+    # Auto width
+    max_char_per_col <- sapply(df, function(col) max(nchar(as.character(col)), na.rm = TRUE))
+    title_char_len <- nchar(colnames(df))
+    est_width <- pmax(title_char_len, max_char_per_col)
+    est_width <- pmin(est_width, 50)
+    setColWidths(wb, sheet = sheet, cols = 1:ncol(df), widths = est_width + 2)
+
+    # Hide unnecessary columns
+    if (length(hide_cols) > 0) {
+      setColWidths(wb, sheet = sheet, cols = hide_cols, widths = 0, hidden = TRUE)
+    }
 
     # Apply styles
-    openxlsx::addStyle(wb, sheet, header_style, rows = 1, cols = 1:ncol(df), gridExpand = TRUE)
-    openxlsx::addStyle(wb, sheet, content_style, rows = 2:(nrow(df) + 1), cols = 1:ncol(df), gridExpand = TRUE)
+    addStyle(wb, sheet, header_style, rows = 1, cols = 1:ncol(df), gridExpand = TRUE)
+    addStyle(wb, sheet, content_style, rows = 2:(nrow(df) + 1), cols = 1:ncol(df), gridExpand = TRUE)
 
-    # Wrap long columns
     wrap_cols <- which(sapply(df, function(col) any(nchar(as.character(col)) > 30)))
     if (length(wrap_cols)) {
-      wrap_style <- openxlsx::createStyle(wrapText = TRUE, halign = "left")
-      openxlsx::addStyle(wb, sheet, wrap_style, rows = 2:(nrow(df) + 1), cols = wrap_cols, gridExpand = TRUE)
+      wrap_style <- createStyle(wrapText = TRUE, halign = "left")
+      addStyle(wb, sheet, wrap_style, rows = 2:(nrow(df) + 1), cols = wrap_cols, gridExpand = TRUE)
     }
 
-    openxlsx::freezePane(wb, sheet, firstRow = TRUE)
-    openxlsx::addFilter(wb, sheet, rows = 1, cols = 1:ncol(df))
+    freezePane(wb, sheet, firstRow = TRUE)
+    addFilter(wb, sheet, rows = 1, cols = 1:ncol(df))
 
-    # Highlight important columns
+    # Highlight
     highlight_idx <- which(tolower(colnames(df)) %in% tolower(highlight_cols))
     if (length(highlight_idx)) {
-      openxlsx::addStyle(wb, sheet, blue_header, rows = 1, cols = highlight_idx, gridExpand = TRUE)
+      addStyle(wb, sheet, blue_header, rows = 1, cols = highlight_idx, gridExpand = TRUE)
     }
 
-    # Status color coding
-    status_idx <- which(colnames(df) == "Status")
+    # Status color
+    status_idx <- which(colnames(df) == "Status") ## match the actual status variable
     if (length(status_idx)) {
       status_values <- df[[status_idx]]
-      openxlsx::addStyle(wb, sheet, closed_style,   rows = which(stringr::str_detect(tolower(status_values), "closed|permanent")) + 1, cols = status_idx)
-      openxlsx::addStyle(wb, sheet, open_style,     rows = which(stringr::str_detect(tolower(status_values), "open")) + 1, cols = status_idx)
-      openxlsx::addStyle(wb, sheet, recurred_style, rows = which(stringr::str_to_lower(status_values) == "recurred") + 1, cols = status_idx)
+      addStyle(wb, sheet, closed_style, rows = which(str_detect(tolower(status_values), "closed|permanent")) + 1, cols = status_idx)
+      addStyle(wb, sheet, open_style,   rows = which(str_detect(tolower(status_values), "open")) + 1, cols = status_idx)
+      addStyle(wb, sheet, recurred_style, rows = which(str_to_lower(status_values) == "recurred") + 1, cols = status_idx)
     }
 
     # Format date columns
     date_idx <- which(tolower(colnames(df)) %in% c("first_detected_date", "last_checked_date"))
     if (length(date_idx)) {
-      openxlsx::addStyle(wb, sheet, date_style, rows = 2:(nrow(df) + 1), cols = date_idx, gridExpand = TRUE)
+      addStyle(wb, sheet, date_style, rows = 2:(nrow(df) + 1), cols = date_idx, gridExpand = TRUE)
     }
   }
 
-  # Reorder sheets
+  ##### Order all the tabs
   all_sheets <- names(wb)
+  # Keep only tabs that actually exist
   main_tabs_declared <- c(
     "READ_ME", "ED_NOT_FOUND", "Visit_discrepancy_issues", "EX_SV_TRTDSPN_DATE_MISMATCH",
     "SV1001_DS6001", "subject_in_multiple_sites", "visits_gap_issue", "ED_and_v801_check"
   )
   main_tabs_present <- intersect(main_tabs_declared, all_sheets)
+  ## other dataset tabs
   other_tabs <- setdiff(all_sheets, main_tabs_present)
+
+  # Sort other tabs alphabetically (or apply your own custom logic)
   sorted_other_tabs <- sort(other_tabs)
+
+  # Final desired order contains every sheet exactly once
   new_sheet_order_names <- c(main_tabs_present, sorted_other_tabs)
 
+  # Map to indices; guaranteed no NA because we intersected earlier
   wb$sheetOrder <- match(new_sheet_order_names, all_sheets)
 
+  # Defensive: ensure it's a proper 1..n permutation (optional assert)
   stopifnot(!any(is.na(wb$sheetOrder)),
             length(unique(wb$sheetOrder)) == length(all_sheets))
 
-  # Style READ_ME tab
+  # Style READ_ME if present
   if ("READ_ME" %in% all_sheets) {
-    df_readme <- openxlsx::readWorkbook(wb, sheet = "READ_ME")
+    ## set appropriate width for the readme tab
+    df_readme <- readWorkbook(wb, sheet = "READ_ME")
     est_width <- sapply(df_readme, function(col) max(nchar(as.character(col)), na.rm = TRUE))
     est_width <- pmin(est_width + 2, 80)
 
-    openxlsx::setColWidths(wb, sheet = "READ_ME", cols = 1:2, widths = est_width[1:2])
-    openxlsx::addStyle(wb, "READ_ME", bold_readme, rows = bold_rows, cols = c(1,2), gridExpand = TRUE)
+    setColWidths(wb, sheet = "READ_ME", cols = 1:2, widths = est_width[1:2])
+    ## add bold rows
+    addStyle(wb, "READ_ME", bold_readme, rows = bold_rows, cols = c(1,2), gridExpand = TRUE)
   }
-
   return(wb)
 }
+

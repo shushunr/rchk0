@@ -1,11 +1,12 @@
 # R/report_readme.R
-#' Create a READ_ME worksheet
+#' Create a READ_ME worksheet in the output excel (issue tracker)
 #' @param wb openxlsx workbook
-#' @param study_name character
+#' @param study_name character, e.g., "I7P-MC-DSAF"
 #' @param all_check data.frame from spec sheet "ALL_DATASETS"
 #' @param simple_check data.frame from spec sheet "SINGLE_DATASETS"
 #' @return wb
 #' @keywords internal
+#'
 create_readme_sheet <- function(wb, study_name = "", all_check, simple_check) {
   if ("READ_ME" %in% openxlsx::sheets(wb)) openxlsx::removeWorksheet(wb, "READ_ME")
   openxlsx::addWorksheet(wb, "READ_ME", tabColour = "orange")
@@ -15,6 +16,8 @@ create_readme_sheet <- function(wb, study_name = "", all_check, simple_check) {
     paste("Raw Data Issue Tracker for", study_name),
     "",
     paste("Last run:", last_run),
+    "",
+    "IMPORTANT: If you'd like to set the \"Automatic\" Issue status as \"Closed\", please leave comment in \"Issue_noted_by_Lilly_Stats\" or \"PPD_Comment_or_resolution\" so that the issue will be denoted correctly at next data transfer.",
     "",
     "This Excel file summarizes raw data issues identified from raw datasets.",
     "It includes non-standard issues, common issues, and dataset-specific issues.",
