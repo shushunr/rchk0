@@ -42,7 +42,7 @@ preprocess <- function(datasets_pool, spec_path) {
     subject_candidates <- c("SUBJECT", "SUBJID", "USUBJID", "SUBJECTNAME")
     subject_var <- intersect(subject_candidates, names(df))[1] %||% NA_character_
     if (!is.na(subject_var)) {
-      df <- df %>% mutate(SUBJECT_ID = sub(".*-", "", .data[[subject_var]]))
+      df <- df %>% mutate(SUBJECT_ID = as.character(sub(".*-", "", .data[[subject_var]])))
     } else {
       df <- df %>% mutate(SUBJECT_ID = NA_character_)
     }
@@ -52,6 +52,9 @@ preprocess <- function(datasets_pool, spec_path) {
     site_var <- intersect(site_candidates, names(df))[1] %||% NA_character_
     if (!is.na(site_var)) {
       df <- df %>% mutate(SITEID = as.character(.data[[site_var]]))
+      if (site_var == "USUBJID"){
+        df <- df %>% mutate(SITEID = substr(USUBJID, 1, 5))
+      }
     } else {
       df <- df %>% mutate(SITEID = NA_character_)
     }

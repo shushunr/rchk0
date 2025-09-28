@@ -2,14 +2,14 @@
 % Please edit documentation in R/report_readme.R
 \name{create_readme_sheet}
 \alias{create_readme_sheet}
-\title{Create a READ_ME worksheet}
+\title{Create a READ_ME worksheet in the output excel (issue tracker)}
 \usage{
 create_readme_sheet(wb, study_name = "", all_check, simple_check)
 }
 \arguments{
 \item{wb}{openxlsx workbook}
 
-\item{study_name}{character}
+\item{study_name}{character, e.g., "I7P-MC-DSAF"}
 
 \item{all_check}{data.frame from spec sheet "ALL_DATASETS"}
 
@@ -19,6 +19,6 @@ create_readme_sheet(wb, study_name = "", all_check, simple_check)
 wb
 }
 \description{
-Create a READ_ME worksheet
+Create a READ_ME worksheet in the output excel (issue tracker)
 }
 \keyword{internal}

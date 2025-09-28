@@ -9,59 +9,77 @@
 #'
 #' @return Writes a worksheet with detected issues into \code{wb}
 #' @export
+#' 
+#' 
 check_multi_site <- function(datasets_pool, wb, output_tab = NULL,
                              visit_info_df = NULL) {
-
   available_ds <- names(datasets_pool)
-
-  multi_site_summary <- purrr::map_dfr(available_ds, function(ds_name) {
+  
+  ## Find all subject id/site id pairs across all datasets
+  all_subject_sites <- purrr::map_dfr(available_ds, function(ds_name) {
     df <- datasets_pool[[ds_name]]
-    info_row <- dplyr::filter(visit_info_df, dataset == ds_name)
-
+    info_row <- visit_info_df %>% filter(dataset == ds_name)
+    
+    ## skip if dataset was not found
     if (nrow(info_row) == 0) {
-      warning("Dataset ", ds_name, " not found in visit_info_df. Skipped.")
+      message("Dataset ", ds_name, " not found in visit_info_df. Skipped.")
       return(NULL)
     }
-
+    
     subject_col <- info_row$subject_var
     site_col    <- info_row$site_var
-
-    if (is.na(subject_col) || is.na(site_col)) {
-      warning("Dataset ", ds_name, " missing subject/site column info. Skipped.")
+    
+    # skip if either subject id or site id was not found
+    if (is.na(subject_col) || is.na(site_col) ||
+        subject_col == "" || site_col == "") {
+      message("Dataset ", ds_name, " missing subject/site column info. Skipped.")
       return(NULL)
     }
-
-    df |>
-      dplyr::filter(!is.na(SITEID), !is.na(SUBJECT_ID)) |>
-      dplyr::group_by(SUBJECT_ID) |>
-      dplyr::summarise(
-        n_sites   = dplyr::n_distinct(SITEID),
-        site_list = paste(sort(unique(SITEID)), collapse = ", "),
-        .groups   = "drop"
-      ) |>
-      dplyr::filter(n_sites > 1) |>
-      dplyr::transmute(
-        SUBJECT_ID,
-        SITEID       = site_list,
-        dataset_name = ds_name
-      )
+    
+    df %>% 
+      transmute(SUBJECT_ID = as.character(SUBJECT_ID),
+             SITEID = as.character(SITEID),
+             dataset_name = ds_name) %>% 
+      filter(!is.na(SUBJECT_ID), !is.na(SITEID))
   })
-
-  if (nrow(multi_site_summary) == 0) {
-    message("No subjects in multiple sites found.")
+  
+  if (nrow(all_subject_sites) == 0) {
+    message("No subject/site information available across datasets.")
     return(invisible(NULL))
   }
-
+  
+  multi_site_summary <- all_subject_sites %>% 
+    group_by(SUBJECT_ID, SITEID) %>% 
+    summarise(
+      dataset_list = paste(sort(unique(dataset_name)), collapse = ", "),
+      .groups = "drop"
+    )  %>% 
+    group_by(SUBJECT_ID) %>% 
+    summarise(n_sites = dplyr::n(),
+              site_dataset_map = paste(
+              paste0("Site ", SITEID, ": ", dataset_list),
+              collapse = "\n"),
+              .groups = "drop") %>% 
+    dplyr::filter(n_sites > 1)
+  
+  if (nrow(multi_site_summary) == 0) {
+    message("No subjects found across multiple sites.")
+    return(invisible(NULL))
+  }
+  
   issues <- multi_site_summary |>
     dplyr::mutate(
       Issue_type = "Automatic",
-      Issue_noted_by_Lilly_Stats = "Subjects in multiple sites",
+      Issue_noted_by_Lilly_Stats = "Subject appears in multiple sites (cross-dataset)",
       PPD_Comment_or_resolution = "",
       Status = "New"
     )
-
-  openxlsx::addWorksheet(wb, output_tab, tabColour = "#FFFF99")
-  openxlsx::writeData(wb, sheet = output_tab, x = issues)
-
-  invisible(NULL)
+  
+  if (!is.null(output_tab)) {
+    openxlsx::addWorksheet(wb, output_tab, tabColour = "#FFFF99")
+    openxlsx::writeData(wb, sheet = output_tab, x = issues)
+  }
+  
+  return(issues)
 }
+

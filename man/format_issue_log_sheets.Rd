@@ -4,10 +4,12 @@
 \alias{format_issue_log_sheets}
 \title{Format all issue log sheets in a workbook}
 \usage{
-format_issue_log_sheets(wb)
+format_issue_log_sheets(wb, extra_cols_list)
 }
 \arguments{
 \item{wb}{An openxlsx Workbook object to be formatted.}
+
+\item{extra_cols_list}{A list including column names retained in the output excel file for each sheet}
 }
 \value{
 The formatted workbook object (in-place).
