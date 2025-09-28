@@ -4,14 +4,15 @@
 #' status highlighting, and tab ordering) to all sheets in an issue log workbook.
 #'
 #' @param wb An openxlsx Workbook object to be formatted.
-#'
+#' @param extra_cols_list A list including column names retained in the output excel file for each sheet
+#' 
 #' @return The formatted workbook object (in-place).
 #' @export
 #'
 #' @importFrom openxlsx readWorkbook writeData createStyle setColWidths addStyle freezePane addFilter
 #' @importFrom stringr str_detect str_to_lower
 #' @importFrom dplyr mutate select filter arrange
-format_issue_log_sheets <- function(wb) {
+format_issue_log_sheets <- function(wb, extra_cols_list) {
   sheets <- names(wb)[-1]  # Exclude READ_ME
 
   # Define styles
@@ -29,30 +30,6 @@ format_issue_log_sheets <- function(wb) {
   ## common cols kept in all datasets
   common_cols <- c("Issue_type", "Issue_noted_by_Lilly_Stats",
                    "PPD_Comment_or_resolution", "Status")
-  extra_cols_list <- list(
-    ae3001 = c("EVENT", "FORMEID", "FORMILB", "PT"),
-    cm1001 = c("EVENT", "CMTRT", "CMSTDAT", "PREFLABEL"),
-    cm2001 = c("EVENT", "CMTRT", "CMSTDAT", "EVENTDT"),
-    ds6001 = c("EVENT", "EVENTDT", "FORMEID"),
-    ex1001 = c("EVENT", "EVENTDT"),
-    i7pmcdsaf_cssrssla = c("CSSASMDAT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_dlqi = c("DLQIASMDT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_hads = c("HADSASMDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_hisqol = c("HISQOLDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_hsnrs = c("HSNRSDAT", "QSCAT", "QSEVLINT", "VISIT", "VISITNUM",
-                        "HSNRSRES4", "HSNRSRES3", "HSNRSRES1", "HSNRSRES2"),
-    i7pmcdsaf_itchnrs = c("INRSASMDT", "INRSASMTIM", "VISIT", "VISITNUM", "INRSRES1"),
-    i7pmcdsaf_lesion = c("DLADAT", "VISIT", "VISITNUM", "DLALOC", "DLALAT",
-                         "DLADIR", "DLARES1", "DLARES2", "DLARES3", "DLARES4", "DLARES5"),
-    i7pmcdsaf_pgic = c("PGICDAT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_pgis = c("PGISASMDAT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_promis7a = c("PROMISFA7DAT", "QSEVLINT", "VISIT", "VISITNUM"),
-    i7pmcdsaf_promis7b = c("PROMISSDSFBDAT", "PROMISSDSFBTIM","QSEVLINT", "VISIT",
-                           "VISITNUM"),
-    lili7pmcdsaf_pkhead_p = c("VISIT", "VISITNUM", "LBDTM", "PTMELTX"),
-    pr1001 = c("EVENT", "EVENTDT", "FORMDEF"),
-    sv1001 = c("EVENT", "EVENTDT", "VISITOCCUR")
-  )
 
   for (sheet in sheets) {
     df <- readWorkbook(wb, sheet = sheet, detectDates = TRUE)
