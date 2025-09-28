@@ -13,6 +13,7 @@ Curated list of exported functions, grouped by topic.
 \item \code{\link[=check_duplicate_visit_date]{check_duplicate_visit_date()}} - Check duplicate visits on the same date (e.g., Visit 14 and Visit 15 on the same date 2025-07-21)
 \item \code{\link[=check_visit_after_ED]{check_visit_after_ED()}} — Visits after an ED date
 \item \code{\link[=check_visit_overlap]{check_visit_overlap()}} — detect overlapped visits
+\item \code{\link[=check_multi_site]{check_multi_site()}} — Check subjects occurred in multiple sites
 }
 }
 

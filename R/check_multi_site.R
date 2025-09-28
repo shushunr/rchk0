@@ -1,4 +1,4 @@
-#' Check subjects belonging to multiple sites
+#' Check subjects occurred in multiple sites
 #'
 #' This function identifies subjects who appear in more than one site across datasets.
 #'
@@ -7,7 +7,10 @@
 #' @param output_tab Name of Excel worksheet to create
 #' @param visit_info_df Metadata with dataset, subject_var, site_var
 #'
-#' @return Writes a worksheet with detected issues into \code{wb}
+#' @return A data frame with the following key columns:
+#' \item{SUBJECT_ID}{Subject Identifier}
+#' \item{n_sites}{Number of sites that this subject occurred in}
+#' \item{site_dataset_map}{Site-dataset pairs of subjects that occurred in multiple sites}
 #' @export
 #' 
 #' 
@@ -70,7 +73,7 @@ check_multi_site <- function(datasets_pool, wb, output_tab = NULL,
   issues <- multi_site_summary |>
     dplyr::mutate(
       Issue_type = "Automatic",
-      Issue_noted_by_Lilly_Stats = "Subject appears in multiple sites (cross-dataset)",
+      Issue_noted_by_Lilly_Stats = "Subject appears in multiple sites",
       PPD_Comment_or_resolution = "",
       Status = "New"
     )

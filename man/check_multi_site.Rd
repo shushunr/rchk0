@@ -2,7 +2,7 @@
 % Please edit documentation in R/check_multi_site.R
 \name{check_multi_site}
 \alias{check_multi_site}
-\title{Check subjects belonging to multiple sites}
+\title{Check subjects occurred in multiple sites}
 \usage{
 check_multi_site(datasets_pool, wb, output_tab = NULL, visit_info_df = NULL)
 }
@@ -16,7 +16,10 @@ check_multi_site(datasets_pool, wb, output_tab = NULL, visit_info_df = NULL)
 \item{visit_info_df}{Metadata with dataset, subject_var, site_var}
 }
 \value{
-Writes a worksheet with detected issues into \code{wb}
+A data frame with the following key columns:
+\item{SUBJECT_ID}{Subject Identifier}
+\item{n_sites}{Number of sites that this subject occurred in}
+\item{site_dataset_map}{Site-dataset pairs of subjects that occurred in multiple sites}
 }
 \description{
 This function identifies subjects who appear in more than one site across datasets.

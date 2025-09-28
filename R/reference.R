@@ -7,6 +7,7 @@
 #' - [check_duplicate_visit_date()] - Check duplicate visits on the same date (e.g., Visit 14 and Visit 15 on the same date 2025-07-21)
 #' - [check_visit_after_ED()] — Visits after an ED date
 #' - [check_visit_overlap()] — detect overlapped visits
+#' - [check_multi_site()] — Check subjects occurred in multiple sites
 #'
 #' @section Export & reporting:
 #' - [export_excel()] — write formatted issue logs
