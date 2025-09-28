@@ -4,12 +4,12 @@
 \alias{preprocess_data}
 \title{Preprocess raw datasets according to spec}
 \usage{
-preprocess_data(datasets_pool, preprocess_spec)
+preprocess_data(datasets_pool, spec_path)
 }
 \arguments{
 \item{datasets_pool}{Named list returned by load_dataset()}
 
-\item{preprocess_spec}{Data frame from spec sheet PREPROCESSING}
+\item{spec_path}{Path for the spec (xlsx)}
 }
 \value{
 list(visit_info_df=..., datasets_pool=...)

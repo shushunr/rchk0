@@ -1,13 +1,15 @@
 # R/preprocess.R
 #' Preprocess raw datasets according to spec
 #' @param datasets_pool Named list returned by load_dataset()
-#' @param preprocess_spec Data frame from spec sheet PREPROCESSING
+#' @param spec_path Path for the spec (xlsx)
 #' @return list(visit_info_df=..., datasets_pool=...)
 #' @export
-preprocess_data <- function(datasets_pool, preprocess_spec) {
+preprocess_data <- function(datasets_pool, spec_path) {
+  preprocess_spec <- read.xlsx(spec_path, sheet = "PREPROCESSING")
   visit_info_list <- vector("list", length(datasets_pool))
   ii <- 0
 
+  ## preprocessing based on spec
   for (nm in names(datasets_pool)) {
     df <- datasets_pool[[nm]]
     spec_row <- preprocess_spec |>
