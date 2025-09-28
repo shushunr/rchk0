@@ -62,7 +62,7 @@ test_that("worksheet is added to workbook when output_tab provided", {
   wb <- openxlsx::createWorkbook()
   check_multi_site(datasets_pool, wb, "multi", visit_info_df)
   
-  expect_true("multi" %in% names(wb$worksheets))
+  expect_true("multi" %in% wb$sheet_names)
 })
 
 
