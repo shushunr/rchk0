@@ -148,7 +148,7 @@ preprocess <- function(datasets_pool, spec_path) {
       "VISIT"
     } else if ("EVENT" %in% names(df)) {
       "EVENT"
-    } else if ("VISITNAME") %in% names(df){
+    } else if ("VISITNAME" %in% names(df)){
       "VISITNAME"
     }
     else {

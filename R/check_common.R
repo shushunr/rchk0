@@ -56,7 +56,7 @@ sum_process <- function(sum, issue, ds_name, date_col = NULL) {
 #'
 #' @param datasets_pool Named list of datasets
 #' @param wb An openxlsx Workbook
-#' @param target_vars Key variables to check
+#' @param target_vars Key variables to check for some/all datasets
 #' @param dataset_no Names of datasets to exclude
 #' @param visit_info_df Visit info metadata
 #' @param output_tab Optional output tab
@@ -65,14 +65,15 @@ sum_process <- function(sum, issue, ds_name, date_col = NULL) {
 check_missing_key_vars <- function(datasets_pool, wb,
                                    target_vars = NULL,
                                    dataset_no = NULL,
-                                   visit_info_df = NULL,
-                                   output_tab = NULL) {
+                                   visit_info_df = NULL) {
 
   datasets <- setdiff(names(datasets_pool), dataset_no)
   if (length(datasets) == 0) {
     warning("Missing key var check skipped: no datasets used")
     return(invisible(NULL))
   }
+  
+  flagged_list <- list()
 
   for (ds in datasets) {
     df <- datasets_pool[[ds]]
@@ -83,9 +84,12 @@ check_missing_key_vars <- function(datasets_pool, wb,
     }
 
     char_vars <- intersect(common, names(df)[sapply(df, is.character)])
+    
+    ## transform empty strings to NA
     df <- dplyr::mutate(df, dplyr::across(dplyr::all_of(char_vars), ~na_if(.x, "")))
 
-    flagged <- dplyr::filter(df, if_any(dplyr::all_of(common), is.na))
+    ## Find NA values or empty strings
+    flagged <- dplyr::filter(df, if_any(dplyr::all_of(common), ~ is.na(.)))
     if (nrow(flagged) == 0) next
 
     flagged <- dplyr::mutate(flagged,
@@ -95,6 +99,8 @@ check_missing_key_vars <- function(datasets_pool, wb,
                              Status = "New"
     )
     flagged[] <- lapply(flagged, as.character)
+    
+    flagged_list[[ds]] <- flagged
 
     if (!(ds %in% names(wb))) {
       openxlsx::addWorksheet(wb, ds)
@@ -110,7 +116,7 @@ check_missing_key_vars <- function(datasets_pool, wb,
     openxlsx::writeData(wb, sheet = ds, x = flagged,
                         startRow = start_row, colNames = write_header)
   }
-  invisible(NULL)
+  return(flagged_list)
 }
 
 #' Check for duplicate visits with the same date

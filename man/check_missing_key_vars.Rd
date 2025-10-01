@@ -9,8 +9,7 @@ check_missing_key_vars(
   wb,
   target_vars = NULL,
   dataset_no = NULL,
-  visit_info_df = NULL,
-  output_tab = NULL
+  visit_info_df = NULL
 )
 }
 \arguments{
@@ -18,7 +17,7 @@ check_missing_key_vars(
 
 \item{wb}{An openxlsx Workbook}
 
-\item{target_vars}{Key variables to check}
+\item{target_vars}{Key variables to check for some/all datasets}
 
 \item{dataset_no}{Names of datasets to exclude}
 
