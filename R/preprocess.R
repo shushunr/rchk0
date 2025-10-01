@@ -25,77 +25,140 @@
 #'
 #' @examples
 #' \dontrun{
-#'   res <- preprocess_data(datasets_pool, "spec.xlsx")
+#'   res <- preprocess(datasets_pool, "spec.xlsx")
 #'   res$visit_info_df
 #'   head(res$datasets_pool$ds6001)
 #' }
 #'
 #' @export
 preprocess <- function(datasets_pool, spec_path) {
-  preprocess_spec <- read.xlsx(spec_path, sheet = "PREPROCESSING")
-
-  map(names(datasets_pool), function(nm) {
+  visit_info_list <- list()
+  preprocess_spec <- openxlsx::read.xlsx(spec_path, sheet = "PREPROCESSING")
+  
+  for (nm in names(datasets_pool)) {
     df <- datasets_pool[[nm]]
-    spec_row <- preprocess_spec %>% filter(DATASET == nm, is.na(REMOVE) | REMOVE != "Y") ## spec preprocessing rows
-
-    # subject_var
-    subject_candidates <- c("SUBJECT", "SUBJID", "USUBJID", "SUBJECTNAME")
-    subject_var <- intersect(subject_candidates, names(df))[1] %||% NA_character_
-    if (!is.na(subject_var)) {
-      df <- df %>% mutate(SUBJECT_ID = as.character(sub(".*-", "", .data[[subject_var]])))
+    
+    ## Read in spec rows (keep rows where REMOVE != "Y")
+    spec_row <- preprocess_spec %>%
+      dplyr::filter(DATASET == nm & (is.na(REMOVE) | REMOVE != "Y"))
+    
+    # ====================
+    # 1) SUBJECT_ID
+    # ====================
+    if ("SUBJECT" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJECT))
+      subject_var <- "SUBJECT"
+    } else if ("SUBJID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJID))
+      subject_var <- "SUBJID"
+    } else if ("USUBJID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", USUBJID))
+      subject_var <- "USUBJID"
+    } else if ("SUBJECTNAME" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJECTNAME))
+      subject_var <- "SUBJECTNAME"
     } else {
-      df <- df %>% mutate(SUBJECT_ID = NA_character_)
+      df <- df %>% dplyr::mutate(SUBJECT_ID = NA_character_)
+      subject_var <- ""
     }
-
-    # site_var
-    site_candidates <- c("SITEID", "SITENUM", "USUBJID", "SITE", "SITENUMBER", "INVID")
-    site_var <- intersect(site_candidates, names(df))[1] %||% NA_character_
-    if (!is.na(site_var)) {
-      df <- df %>% mutate(SITEID = as.character(.data[[site_var]]))
-      if (site_var == "USUBJID"){
-        df <- df %>% mutate(SITEID = substr(USUBJID, 1, 5))
-      }
+    
+    # ====================
+    # 2) SITEID
+    # ====================
+    if ("SITEID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(SITEID))
+      site_var <- "SITEID"
+    } else if ("SITENUM" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(SITENUM))
+      site_var <- "SITENUM"
+    } else if ("USUBJID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = substr(USUBJID, 1, 5))
+      site_var <- "USUBJID"
+    } else if ("SITE" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(SITE))
+      site_var <- "SITE"
+    } else if ("SITENUMBER" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(SITENUMBER))
+      site_var <- "SITENUMBER"
+    } else if ("INVID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(INVID))
+      site_var <- "INVID"
     } else {
-      df <- df %>% mutate(SITEID = NA_character_)
+      df <- df %>% dplyr::mutate(SITEID = NA_character_)
+      site_var <- ""
     }
-
-    # row filter
-    if (nrow(spec_row) == 1 && !is.na(spec_row$EXCLUDE_ROWS)) {
-      expr <- rlang::parse_expr(spec_row$EXCLUDE_ROWS)
-      df <- df %>% filter(!!expr)
+    
+    # # ====================
+    # # 3) Customized row filter from EXCLUDE_ROWS (filter out)
+    # # ====================
+    # if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_ROWS)) {
+    #   custom_filter <- spec_row$EXCLUDE_ROWS
+    #   cond <- eval(parse(text = custom_filter), envir = df)
+    #   
+    #   if (is.logical(cond) && length(cond) == nrow(df)) {
+    #     df <- df[!cond, , drop = FALSE]
+    #   } else {
+    #     warning("EXCLUDE_ROWS did not evaluate to a logical vector; no rows removed.")
+    #   }
+    # }
+    # 
+    # # ====================
+    # # 4) Customized columns filter from EXCLUDE_COLS (drop columns)
+    # # ====================
+    # if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_COLS)) {
+    #   selected_cols <- strsplit(spec_row$EXCLUDE_COLS, ",")[[1]] %>% trimws()
+    #   existing_cols <- intersect(selected_cols, names(df))
+    #   if (length(existing_cols) > 0) {
+    #     df <- df %>% select(-all_of(existing_cols))  
+    #   }
+    # }
+    
+    # ====================
+    # 5) Visit date column
+    # ====================
+    visit_date_col <- NULL
+    if ("EVENTDT" %in% names(df)) {
+      visit_date_col <- "EVENTDT"
+    } else if (nm == "lab" && "LBDTM" %in% names(df)) {
+      visit_date_col <- "LBDTM"
+    } else if (nm == "sv1001") {
+      visit_date_col <- "VISDAT"
+    } else if (nm == "vs1001") {
+      visit_date_col <- "VSDAT"
+    } else if ("ECOAASMDT" %in% names(df)) {
+      df <- df %>% dplyr::mutate(ECOAASMDT = as.Date(ECOAASMDT))
+      visit_date_col <- "ECOAASMDT"
+    } else if (nm == "ec1001") {
+      visit_date_col <- "ECSTDAT"
     }
-
-    # column filter
-    if (nrow(spec_row) == 1 && !is.na(spec_row$EXCLUDE_COLS)) {
-      cols <- strsplit(spec_row$EXCLUDE_COLS, ",")[[1]] %>% trimws()
-      df <- df %>% select(-any_of(cols))
+    
+    # ====================
+    # 6) Visit label column
+    # ====================
+    visit_label_col <- if ("VISIT" %in% names(df)) {
+      "VISIT"
+    } else if ("EVENT" %in% names(df)) {
+      "EVENT"
+    } else {
+      NA
     }
-
-    # visit_date_col
-    visit_date_col <- intersect(c("EVENTDT", "LBDTM", "VISDAT", "VSDAT", "ECOAASMDT", "ECSTDAT"), names(df))[1] %||% NA_character_
-
-    # visit_label_col
-    visit_label_col <- intersect(c("VISIT", "EVENT"), names(df))[1] %||% NA_character_
-
-    list(
+    
+    visit_info_list[[nm]] <- data.frame(
       dataset = nm,
       subject_var = subject_var,
       site_var = site_var,
-      visit_date_col = visit_date_col,
-      visit_label_col = visit_label_col,
-      df = df
+      visit_date_col = ifelse(is.null(visit_date_col), NA, visit_date_col),
+      visit_label_col = ifelse(is.null(visit_label_col), NA, visit_label_col),
+      stringsAsFactors = FALSE
     )
-  }) %>%
-    {
-      info <- bind_rows(lapply(., \(x) tibble(
-        dataset = x$dataset,
-        subject_var = x$subject_var,
-        site_var = x$site_var,
-        visit_date_col = x$visit_date_col,
-        visit_label_col = x$visit_label_col
-      )))
-      pool <- setNames(lapply(., `[[`, "df"), map_chr(., "dataset"))
-      list(visit_info_df = info, data_list = pool)
-    }
+    
+    datasets_pool[[nm]] <- df
+  }
+  
+  visit_info_df <- dplyr::bind_rows(visit_info_list)
+  
+  return(list(
+    visit_info_df = visit_info_df,
+    datasets_pool = datasets_pool
+  ))
 }
-

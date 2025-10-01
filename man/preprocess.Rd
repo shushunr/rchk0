@@ -34,7 +34,7 @@ metadata for each dataset in the pool. The main steps include:
 }
 \examples{
 \dontrun{
-  res <- preprocess_data(datasets_pool, "spec.xlsx")
+  res <- preprocess(datasets_pool, "spec.xlsx")
   res$visit_info_df
   head(res$datasets_pool$ds6001)
 }

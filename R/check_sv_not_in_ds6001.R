@@ -12,8 +12,7 @@
 #'
 #' @return Writes a worksheet with detected issues into \code{wb}
 #' @export
-
-check_sv_not_in_ds6001 <- function(datasets_pool, wb, other_datasets = NULL,
+sv_ds <- function(datasets_pool, wb, other_datasets = NULL,
                                    output_tab = NULL, visit_info_df = NULL,
                                    sv_visit = c(1:28, 801, 802)) {
 
@@ -108,5 +107,5 @@ check_sv_not_in_ds6001 <- function(datasets_pool, wb, other_datasets = NULL,
   openxlsx::addWorksheet(wb, output_tab, tabColour = "#FFFF99")
   openxlsx::writeData(wb, sheet = output_tab, x = missing_visits)
 
-  invisible(NULL)
+  return(missing_visits)
 }

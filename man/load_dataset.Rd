@@ -2,13 +2,14 @@
 % Please edit documentation in R/io_read.R
 \name{load_dataset}
 \alias{load_dataset}
-\title{Load raw datasets into a named list}
+\title{Load raw datasets into a named list, and also assign each to environment}
 \usage{
 load_dataset(
   path,
   pattern = "\\\\.sas7bdat$",
   exclude_prefixes = c("sys", "cdms"),
-  exclude_names = c("record_count", "rtsm_sbjct_data")
+  exclude_names = c("record_count", "rtsm_sbjct_data"),
+  envir = .GlobalEnv
 )
 }
 \arguments{
@@ -19,10 +20,12 @@ load_dataset(
 \item{exclude_prefixes}{Character vector of prefixes to drop}
 
 \item{exclude_names}{Exact dataset basenames to drop (without extension)}
+
+\item{envir}{Environment to assign datasets into (default: .GlobalEnv)}
 }
 \value{
 Named list of data.frames/tibbles
 }
 \description{
-Load raw datasets into a named list
+Load raw datasets into a named list, and also assign each to environment
 }

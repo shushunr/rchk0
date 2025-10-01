@@ -12,9 +12,7 @@
 #' \item{n_sites}{Number of sites that this subject occurred in}
 #' \item{site_dataset_map}{Site-dataset pairs of subjects that occurred in multiple sites}
 #' @export
-#' 
-#' 
-check_multi_site <- function(datasets_pool, wb, output_tab = NULL,
+multi_site <- function(datasets_pool, wb, output_tab = NULL,
                              visit_info_df = NULL) {
   available_ds <- names(datasets_pool)
   
