@@ -54,6 +54,9 @@ preprocess <- function(datasets_pool, spec_path) {
     } else if ("USUBJID" %in% names(df)) {
       df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", USUBJID))
       subject_var <- "USUBJID"
+    } else if ("SUBJECT_NUMBER" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJECT_NUMBER))
+      subject_var <- "USUBJID"
     } else if ("SUBJECTNAME" %in% names(df)) {
       df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJECTNAME))
       subject_var <- "SUBJECTNAME"
@@ -68,6 +71,9 @@ preprocess <- function(datasets_pool, spec_path) {
     if ("SITEID" %in% names(df)) {
       df <- df %>% dplyr::mutate(SITEID = as.character(SITEID))
       site_var <- "SITEID"
+    } else if ("SITE_ID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = as.character(SITE_ID))
+      site_var <- "SITENUM"
     } else if ("SITENUM" %in% names(df)) {
       df <- df %>% dplyr::mutate(SITEID = as.character(SITENUM))
       site_var <- "SITENUM"
@@ -83,6 +89,9 @@ preprocess <- function(datasets_pool, spec_path) {
     } else if ("INVID" %in% names(df)) {
       df <- df %>% dplyr::mutate(SITEID = as.character(INVID))
       site_var <- "INVID"
+    } else if ("SUBJID" %in% names(df)) {
+      df <- df %>% dplyr::mutate(SITEID = substr(SUBJID, 1, 5))  ## SUBJID='10019-20099', no site variables found
+      site_var <- "SUBJID"
     } else {
       df <- df %>% dplyr::mutate(SITEID = NA_character_)
       site_var <- ""
@@ -139,7 +148,10 @@ preprocess <- function(datasets_pool, spec_path) {
       "VISIT"
     } else if ("EVENT" %in% names(df)) {
       "EVENT"
-    } else {
+    } else if ("VISITNAME") %in% names(df){
+      "VISITNAME"
+    }
+    else {
       NA
     }
     
