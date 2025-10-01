@@ -10,7 +10,9 @@ sv_ds(
   other_datasets = NULL,
   output_tab = NULL,
   visit_info_df = NULL,
-  sv_visit = c(1:28, 801, 802)
+  sv_visit = c(1:28, 801, 802),
+  sv_pattern = NULL,
+  ds_pattern = NULL
 )
 }
 \arguments{
@@ -25,6 +27,10 @@ sv_ds(
 \item{visit_info_df}{Metadata with dataset, visit_label_col, visit_date_col}
 
 \item{sv_visit}{Numeric vector of VISIT numbers to check (default: \code{c(1:28, 801, 802)})}
+
+\item{sv_pattern}{Character vector of sv visit patterns, where "x" is a placeholder for digits, e.g., "evVx", "Visit x"}
+
+\item{ds_pattern}{Character vector of ds visit patterns, where "x" is a placeholder for digits, e.g., "evVx", "Visit x"}
 }
 \value{
 Writes a worksheet with detected issues into \code{wb}
