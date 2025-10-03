@@ -92,12 +92,22 @@ check_missing_key_vars <- function(datasets_pool, wb,
     flagged <- dplyr::filter(df, if_any(dplyr::all_of(common), ~ is.na(.)))
     if (nrow(flagged) == 0) next
 
-    flagged <- dplyr::mutate(flagged,
-                             Issue_type = "Automatic",
-                             Issue_noted_by_Lilly_Stats = "Missing values in VISIT/VISITNUM/EVENT/EVENTDEF/EVENTEID",
-                             PPD_Comment_or_resolution = "",
-                             Status = "New"
-    )
+    flagged <- df %>%
+      dplyr::filter(if_any(dplyr::all_of(common), ~ is.na(.))) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(
+        missing_vars = paste(names(c_across(all_of(common)))[is.na(c_across(all_of(common)))],
+                             collapse = ", ")
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::mutate(
+        Issue_type = "Automatic",
+        Issue_noted_by_Lilly_Stats = paste("Missing values in", missing_vars),
+        PPD_Comment_or_resolution = "",
+        Status = "New"
+      ) %>%
+      dplyr::select(-missing_vars)
+    
     flagged[] <- lapply(flagged, as.character)
     
     flagged_list[[ds]] <- flagged
@@ -137,6 +147,8 @@ check_duplicate_visit_date <- function(datasets_pool, wb,
                                        custom_code_list = NULL) {
 
   datasets <- setdiff(names(datasets_pool), dataset_no)
+  dup_list <- list()
+  
   for (ds_name in datasets) {
     df <- datasets_pool[[ds_name]]
     if (is.null(df) || nrow(df) == 0) { message("Dataset empty: ", ds_name); next }
@@ -144,6 +156,7 @@ check_duplicate_visit_date <- function(datasets_pool, wb,
     info_row <- dplyr::filter(visit_info_df, dataset == ds_name)
     if (nrow(info_row) == 0) { message("Skip: ", ds_name, " no visit_info."); next }
 
+    ## visit date and label columns must exist
     visit_date_col <- info_row$visit_date_col
     visit_label_col <- info_row$visit_label_col
     if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) {
@@ -167,6 +180,8 @@ check_duplicate_visit_date <- function(datasets_pool, wb,
     if (nrow(dups) == 0) next
     dups <- raw_process(dplyr::arrange(dups, SUBJECT_ID, .data[[visit_date_col]], .data[[visit_label_col]]),
                         issue = "Duplicate visits with the same date")
+    
+    dup_list[[ds_name]] <- dups
 
     if (!(ds_name %in% names(wb))) {
       openxlsx::addWorksheet(wb, ds_name); start_row <- 1; write_header <- TRUE
@@ -177,7 +192,8 @@ check_duplicate_visit_date <- function(datasets_pool, wb,
     }
     openxlsx::writeData(wb, ds_name, dups, startRow = start_row, colNames = write_header)
   }
-  invisible(NULL)
+  
+  return(dup_list)
 }
 
 #' Check for visits after ED
