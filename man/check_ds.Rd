@@ -4,24 +4,28 @@
 \alias{check_ds}
 \title{Disposition Dataset Check}
 \usage{
-check_ds(ds, formeid, dataset_no = NULL, visit_info_df = NULL)
+check_ds(
+  ds = ds6001,
+  formeid = FORMEID,
+  scr_dt = NULL,
+  scr_reas = NULL,
+  trt_dt = NULL,
+  trt_reas = NULL,
+  trtp_dt = NULL,
+  trtp_reas = NULL,
+  fup_dt = NULL,
+  fup_reas = NULL,
+  visit_info_df = visit_info_df
+)
 }
 \arguments{
 \item{ds}{Disposition dataset name}
 
-\item{dataset_no}{A character vector of dataset names to exclude (e.g., diary data).}
-
-\item{visit_info_df}{A data frame describing dataset, subject, site, visit/date column info. Please set}
-
 \item{output_tab}{The name of the worksheet to create in the Excel output.}
 }
 \value{
-The workbook \code{wb} with a new sheet added if issues are found.
+A dataframe that specified each subject's disposition information.
 }
 \description{
-This function performs two checks:
-\enumerate{
-\item For subjects having both ED and V801, ED date is on or after V801.
-\item Regulatory visits (V1–V10) occurring after ED across all datasets (except diary data).
-}
+This function checks the DS6001 dataset (for out-sourced study)
 }

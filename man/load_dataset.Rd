@@ -9,7 +9,7 @@ load_dataset(
   pattern = "\\\\.sas7bdat$",
   exclude_prefixes = c("sys", "cdms"),
   exclude_names = c("record_count", "rtsm_sbjct_data"),
-  envir = .GlobalEnv
+  verbose = TRUE
 )
 }
 \arguments{
@@ -17,9 +17,9 @@ load_dataset(
 
 \item{pattern}{Regex for files (default .sas7bdat)}
 
-\item{exclude_prefixes}{Character vector of prefixes to drop}
+\item{exclude_prefixes}{Character vector of prefixes to drop, e.g., c("sys", "cdms")}
 
-\item{exclude_names}{Exact dataset basenames to drop (without extension)}
+\item{exclude_names}{Character vector of dataset names to drop (without extension)}
 
 \item{envir}{Environment to assign datasets into (default: .GlobalEnv)}
 }

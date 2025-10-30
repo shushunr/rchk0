@@ -31,7 +31,7 @@
 #' }
 #'
 #' @export
-preprocess <- function(datasets_pool, spec_path) {
+preprocess <- function(datasets_pool, spec_path, export_to_env = FALSE) {
   visit_info_list <- list()
   preprocess_spec <- openxlsx::read.xlsx(spec_path, sheet = "PREPROCESSING")
   
@@ -43,7 +43,7 @@ preprocess <- function(datasets_pool, spec_path) {
       dplyr::filter(DATASET == nm & (is.na(REMOVE) | REMOVE != "Y"))
     
     # ====================
-    # 1) SUBJECT_ID
+    # 1) SUBJECT_ID variable creation
     # ====================
     if ("SUBJECT" %in% names(df)) {
       df <- df %>% dplyr::mutate(SUBJECT_ID = sub(".*-", "", SUBJECT))
@@ -66,7 +66,7 @@ preprocess <- function(datasets_pool, spec_path) {
     }
     
     # ====================
-    # 2) SITEID
+    # 2) SITEID variable creation
     # ====================
     if ("SITEID" %in% names(df)) {
       df <- df %>% dplyr::mutate(SITEID = as.character(SITEID))
@@ -97,30 +97,30 @@ preprocess <- function(datasets_pool, spec_path) {
       site_var <- ""
     }
     
-    # # ====================
-    # # 3) Customized row filter from EXCLUDE_ROWS (filter out)
-    # # ====================
-    # if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_ROWS)) {
-    #   custom_filter <- spec_row$EXCLUDE_ROWS
-    #   cond <- eval(parse(text = custom_filter), envir = df)
-    #   
-    #   if (is.logical(cond) && length(cond) == nrow(df)) {
-    #     df <- df[!cond, , drop = FALSE]
-    #   } else {
-    #     warning("EXCLUDE_ROWS did not evaluate to a logical vector; no rows removed.")
-    #   }
-    # }
-    # 
-    # # ====================
-    # # 4) Customized columns filter from EXCLUDE_COLS (drop columns)
-    # # ====================
-    # if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_COLS)) {
-    #   selected_cols <- strsplit(spec_row$EXCLUDE_COLS, ",")[[1]] %>% trimws()
-    #   existing_cols <- intersect(selected_cols, names(df))
-    #   if (length(existing_cols) > 0) {
-    #     df <- df %>% select(-all_of(existing_cols))  
-    #   }
-    # }
+    # ====================
+    # 3) Customized row filter from EXCLUDE_ROWS (filter out)
+    # ====================
+    if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_ROWS)) {
+      custom_filter <- spec_row$EXCLUDE_ROWS
+      cond <- eval(parse(text = custom_filter), envir = df)
+
+      if (is.logical(cond) && length(cond) == nrow(df)) {
+        df <- df[cond, , drop = FALSE]
+      } else {
+        warning("EXCLUDE_ROWS did not evaluate to a logical vector; no rows removed.")
+      }
+    }
+
+    # ====================
+    # 4) Customized columns filter from EXCLUDE_COLS (drop columns)
+    # ====================
+    if (nrow(spec_row) > 0 && !is.na(spec_row$EXCLUDE_COLS)) {
+      selected_cols <- strsplit(spec_row$EXCLUDE_COLS, ",")[[1]] %>% trimws()
+      existing_cols <- intersect(selected_cols, names(df))
+      if (length(existing_cols) > 0) {
+        df <- df %>% select(-all_of(existing_cols))
+      }
+    }
     
     # ====================
     # 5) Visit date column
@@ -165,6 +165,10 @@ preprocess <- function(datasets_pool, spec_path) {
     )
     
     datasets_pool[[nm]] <- df
+    
+    if (export_to_env) {
+      assign(nm, df, envir = .GlobalEnv)
+    }
   }
   
   visit_info_df <- dplyr::bind_rows(visit_info_list)

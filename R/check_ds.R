@@ -1,27 +1,26 @@
 #' Disposition Dataset Check
 #'
-#' This function performs two checks:
-#' 1. For subjects having both ED and V801, ED date is on or after V801.
-#' 2. Regulatory visits (V1–V10) occurring after ED across all datasets (except diary data).
+#' This function checks the ds6001 dataset (for out-sourced study)
 #'
 #' @param ds Disposition dataset name
-#' @param dataset_no A character vector of dataset names to exclude (e.g., diary data).
-#' @param visit_info_df A data frame describing dataset, subject, site, visit/date column info. Please set
 #' @param output_tab The name of the worksheet to create in the Excel output.
 #'
-#' @return The workbook `wb` with a new sheet added if issues are found.
+#' @return A dataframe that specified each subject's disposition information.
 #' @export
 #'
 #' @import dplyr purrr
 #'
 
-check_ds <- function(ds, formeid,
-                     dataset_no = NULL,
-                     visit_info_df = NULL) {
+check_ds <- function(ds = ds6001, formeid = FORMEID,
+                     scr_dt = DSSTDAT2, scr_reas = DSDECOD_13,
+                     trt_dt = DSSTDAT3, trt_reas = DSDECOD_7,
+                     trtp_dt = DSSTDAT6, trtp_reas = DSDECOD_9,
+                     fup_dt = DSSTDAT9, fup_reas = DSDECOD_15,
+                     visit_info_df = visit_info_df) {
 
   ## Screening discontinuation
   lv4 <- ds6001 %>%
-    filter(FORMEID == "DS6001_LVxx") %>%
+    filter(FORMEID == "DS6001_LV4") %>%
     transmute(SITENUM, SUBJID,
               scrn_disc_dat  = DSSTDAT2,
               scrn_disc_reas = DSDECOD_13)
@@ -47,14 +46,8 @@ check_ds <- function(ds, formeid,
               fup_disc_dat  = DSSTDAT9,
               fup_disc_reas = DSDECOD_15)
 
-  ## Overall study discontinuation
-  lv12 <- ds6001 %>%
-    filter(FORMEID == "DS6001_LV12") %>%
-    transmute(SITENUM, SUBJID,
-              overall_disc_dat = DSSTDAT)
 
-
-  ds_summary <- list(lv4, lv5, lv6, lv7, lv12) %>%
+  ds_summary <- list(lv4, lv5, lv6, lv7) %>%
     reduce(full_join, by = c("SITENUM", "SUBJID"))
 
   return(ds_summary)

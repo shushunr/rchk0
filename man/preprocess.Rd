@@ -4,7 +4,7 @@
 \alias{preprocess}
 \title{Preprocess raw datasets according to spec}
 \usage{
-preprocess(datasets_pool, spec_path)
+preprocess(datasets_pool, spec_path, export_to_env = FALSE)
 }
 \arguments{
 \item{datasets_pool}{A named list of raw datasets, typically the output of \code{load_dataset()}.}
