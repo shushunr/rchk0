@@ -1,5 +1,5 @@
 # R/preprocess.R
-#' Preprocess raw datasets according to spec
+#' Preprocess raw datasets based on spec
 #'
 #' This function standardizes subject and site identifiers, applies
 #' preprocessing rules defined in the spec, and captures visit-related
