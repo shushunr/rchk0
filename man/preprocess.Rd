@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocess.R
 \name{preprocess}
 \alias{preprocess}
-\title{Preprocess raw datasets according to spec}
+\title{Preprocess raw datasets based on spec}
 \usage{
 preprocess(datasets_pool, spec_path, export_to_env = FALSE)
 }

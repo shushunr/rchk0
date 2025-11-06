@@ -1,5 +1,5 @@
 # R/run_tracker.R
-#' Run Raw Issue Tracker
+#' Run Raw Issue Tracker at one time
 #' @param data_path directory of raw datasets
 #' @param spec_path xlsx spec path
 #' @param out_xlsx output Excel path
@@ -14,21 +14,23 @@ run_tracker <- function(data_path, spec_path, out_xlsx,
 
   all_check    <- openxlsx::read.xlsx(spec_path, sheet = "ALL_DATASETS") |> dplyr::filter(is.na(.data$REMOVE))
   simple_check <- openxlsx::read.xlsx(spec_path, sheet = "SINGLE_DATASETS") |> dplyr::filter(is.na(.data$REMOVE))
-  preprocess_spec <- openxlsx::read.xlsx(spec_path, sheet = "PREPROCESSING")
 
+  ## Load dataset
   datasets_pool <- load_dataset(data_path,
                                 pattern = "\\.sas7bdat$",
                                 exclude_prefixes = exclude_prefixes,
                                 exclude_names = exclude_names)
-
-  prep <- preprocess_data(datasets_pool, preprocess_spec)
+  
+  ## Preprocess dataset
+  prep <- preprocess(datasets_pool, spec_path, export_to_env = TRUE)
+  
   datasets_pool <- prep$datasets_pool
   data_info <- prep$visit_info_df
 
-  wb <- openxlsx::createWorkbook()
-  wb <- create_readme_sheet(wb, study_name = study_name %||% "", all_check = all_check, simple_check = simple_check)
+  wb <- openxlsx::createWorkbook() ## create a workbook for the final excel
+  wb <- create_readme_sheet(wb, study_name = study_name %||% "", all_check = all_check, simple_check = simple_check) ## create readme sheet for the output issue tracker
 
-  # ALL_DATASETS status
+  # ------- Read all available checkpoints from spec
   for (i in seq_len(nrow(all_check))) {
     fun_name  <- all_check$FUNCTION_NAME[i]
     out_tab   <- all_check$OUTPUT_TAB[i]

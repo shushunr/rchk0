@@ -10,47 +10,107 @@
 #' @return A list with `summary` and `raw`
 #' @keywords internal
 issue_envelope <- function(df_summary, df_raw, idx = NULL, label = NULL) {
-  list(summary = df_summary, raw = df_raw)
-}
-
-#' Post-process raw issue records
-#'
-#' @param raw A data.frame of issues
-#' @param issue A string with issue description
-#' @return data.frame with added metadata columns
-#' @keywords internal
-raw_process <- function(raw, issue) {
-  dplyr::mutate(raw,
-                Issue_type = "Automatic",
-                Issue_noted_by_Lilly_Stats = issue,
-                PPD_Comment_or_resolution = "",
-                Status = "New"
+  structure(
+    list(summary = df_summary, raw = df_raw, idx = idx, label = label),
+    class = "issue_result"
   )
 }
 
-
-#' Post-process summary issue records
-#'
-#' @param sum A summary data.frame
-#' @param issue Character issue label
-#' @param ds_name Dataset name
-#' @param date_col Optional date column
-#' @return A standardized summary data.frame
-#' @keywords internal
-sum_process <- function(sum, issue, ds_name, date_col = NULL) {
-  sum |>
-    dplyr::group_by(SITEID, SUBJECT_ID) |>
-    dplyr::summarise(
-      DATASET = ds_name,
-      ISSUE = issue,
-      FIRST_DETECTED_DATE = Sys.Date(),
-      LAST_CHECKED_DATE   = Sys.Date(),
-      STATUS = "New",
-      .groups = "drop"
-    ) |>
-    dplyr::select(DATASET, SUBJECT_ID, SITEID, ISSUE,
-                  FIRST_DETECTED_DATE, LAST_CHECKED_DATE, STATUS)
+#' Add issue metadata
+#' @param df_summary A summary data.frame
+#' @param df_raw A raw data.frame
+#' @param idx Optional index
+#' @param label Optional label
+add_issue_meta <- function(df, issue, type = c("raw", "summary"),
+                           dataset = NULL, id_cols = c("SITEID","SUBJECT_ID"),
+                           status = "New", first = Sys.Date(), last = Sys.Date()) {
+  type <- match.arg(type)
+  if (type == "raw") {
+    dplyr::mutate(df,
+                  Issue_type = "Automatic",
+                  Issue_noted_by_Lilly_Stats = issue,
+                  DM_Comment_or_resolution = "",
+                  Status = status,
+                  Importance = ""
+    )
+  } else {
+    # collapse to one row per subject/site
+    df |>
+      dplyr::distinct(dplyr::across(dplyr::all_of(id_cols))) |>
+      dplyr::mutate(
+        DATASET = dataset, ISSUE = issue,
+        FIRST_DETECTED_DATE = first, LAST_CHECKED_DATE = last,
+        STATUS = status
+      ) |>
+      dplyr::select(DATASET, dplyr::all_of(c(setdiff(id_cols, "SUBJECT_ID"), "SUBJECT_ID")),
+                    ISSUE, FIRST_DETECTED_DATE, LAST_CHECKED_DATE, STATUS)
+  }
 }
+
+##### Helper functions #####
+normalize_empty_to_na <- function(df, cols = names(df)) {
+  chr <- intersect(cols, names(df)[vapply(df, is.character, TRUE)]) ## check all character type columns
+  dplyr::mutate(df, dplyr::across(dplyr::all_of(chr), ~ dplyr::na_if(.x, ""))) ## Turn all empty strings "" to NA
+}
+
+filter_exclude_unscheduled <- function(df, visit_label_col = NULL) {
+  if (!is.null(visit_label_col) && visit_label_col %in% names(df)) {
+    dplyr::filter(df, !grepl("unscheduled", .data[[visit_label_col]], ignore.case = TRUE)) ## filter out unscheduled visits
+  } else df
+}
+
+derive_visit_num <- function(df, visit_label_col = NULL) {
+  if ("VISITNUM" %in% names(df)) {
+    dplyr::mutate(df, VISIT_NUM = suppressWarnings(as.numeric(.data$VISITNUM))) ## get VISITNUM from data, else get visit_label_col
+  } else if (!is.null(visit_label_col) && visit_label_col %in% names(df)) {
+    dplyr::mutate(
+      df,
+      VISIT_NUM = suppressWarnings(as.numeric(stringr::str_extract(.data[[visit_label_col]], "\\d+")))
+    )
+  } else df
+}
+
+##### Excel I/O #####
+.wb_row_cache <- new.env(parent = emptyenv())
+
+wb_append <- function(wb, sheet, x, gap = 1, write_header_if_new = TRUE) {
+  stopifnot(inherits(wb, "Workbook"))
+  if (!(sheet %in% openxlsx::sheets(wb))) { ## create new sheet if not exist
+    openxlsx::addWorksheet(wb, sheet)
+    start <- 1
+    openxlsx::writeData(wb, sheet, x, startRow = start, colNames = write_header_if_new)
+    .wb_row_cache[[sheet]] <- nrow(x) + if (write_header_if_new) 1 else 0
+  } else { ## Append data if sheet exists
+    start <- (get0(sheet, envir = .wb_row_cache, ifnotfound = 0) %||% 0) + gap + 1
+    openxlsx::writeData(wb, sheet, x, startRow = start, colNames = FALSE)
+    .wb_row_cache[[sheet]] <- start + nrow(x) - 1
+  }
+  invisible(TRUE)
+}
+
+##### Dataset pre-check #####
+per_dataset <- function(datasets_pool, dataset_no = NULL, visit_info_df = NULL,
+                        .fn, id_cols = c("SITEID","SUBJECT_ID"), ...) {
+  out <- list()
+  datasets <- setdiff(names(datasets_pool), dataset_no)
+  for (ds in datasets) {
+    df <- datasets_pool[[ds]]
+    if (is.null(df) || nrow(df) == 0) { message("Dataset is empty: ", ds); next }
+    
+    ## Get dataset info from data_info
+    info <- if (!is.null(visit_info_df))
+      dplyr::filter(visit_info_df, .data$dataset == ds) else NULL
+    
+    vdate <- if (!is.null(info) && nrow(info)) info$visit_date_col[1] else NA_character_
+    vlab  <- if (!is.null(info) && nrow(info)) info$visit_label_col[1] else NA_character_
+    
+    res <- .fn(df = df, ds = ds, visit_date_col = vdate, visit_label_col = vlab,
+               id_cols = id_cols, ...)
+    if (!is.null(res) && nrow(res)) out[[ds]] <- res
+  }
+  out
+}
+
 
 #' Check for missing key variables
 #'
@@ -59,74 +119,50 @@ sum_process <- function(sum, issue, ds_name, date_col = NULL) {
 #' @param target_vars Key variables to check for some/all datasets
 #' @param dataset_no Names of datasets to exclude
 #' @param visit_info_df Visit info metadata
-#' @param output_tab Optional output tab
 #' @return Writes results into workbook, invisibly returns NULL
 #' @export
-check_missing_key_vars <- function(datasets_pool, wb,
-                                   target_vars = NULL,
-                                   dataset_no = NULL,
-                                   visit_info_df = NULL) {
-
-  datasets <- setdiff(names(datasets_pool), dataset_no)
-  if (length(datasets) == 0) {
-    warning("Missing key var check skipped: no datasets used")
-    return(invisible(NULL))
-  }
+compute_missing_key_vars <- function(df, ds, keys) {
+  common <- intersect(keys, names(df)) 
+  if (!length(common)) return(NULL) ## If keys are not in dataset, return NULL
   
-  flagged_list <- list()
-
-  for (ds in datasets) {
-    df <- datasets_pool[[ds]]
-    common <- intersect(target_vars, names(df))
-    if (!length(common)) {
-      message("Dataset ", ds, " skipped: no key vars found.")
-      next
-    }
-
-    char_vars <- intersect(common, names(df)[sapply(df, is.character)])
-    
-    ## transform empty strings to NA
-    df <- dplyr::mutate(df, dplyr::across(dplyr::all_of(char_vars), ~na_if(.x, "")))
-
-    ## Find NA values or empty strings
-    flagged <- dplyr::filter(df, if_any(dplyr::all_of(common), ~ is.na(.)))
-    if (nrow(flagged) == 0) next
-
-    flagged <- df %>%
-      dplyr::filter(if_any(dplyr::all_of(common), ~ is.na(.))) %>%
-      dplyr::rowwise() %>%
-      dplyr::mutate(
-        missing_vars = paste(names(c_across(all_of(common)))[is.na(c_across(all_of(common)))],
-                             collapse = ", ")
-      ) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(
-        Issue_type = "Automatic",
-        Issue_noted_by_Lilly_Stats = paste("Missing values in", missing_vars),
-        PPD_Comment_or_resolution = "",
-        Status = "New"
-      ) %>%
-      dplyr::select(-missing_vars)
-    
-    flagged[] <- lapply(flagged, as.character)
-    
-    flagged_list[[ds]] <- flagged
-
-    if (!(ds %in% names(wb))) {
-      openxlsx::addWorksheet(wb, ds)
-      start_row <- 1; write_header <- TRUE
-    } else {
-      existing_df <- tryCatch(openxlsx::readWorkbook(wb, sheet = ds), error = function(e) NULL)
-      if (is.null(existing_df)) {
-        start_row <- 1; write_header <- TRUE
-      } else {
-        start_row <- nrow(existing_df) + 2; write_header <- FALSE
+  df2 <- normalize_empty_to_na(df, common)
+  miss <- dplyr::filter(df2, dplyr::if_any(dplyr::all_of(common), ~ is.na(.x)))
+  if (!nrow(miss)) return(NULL)
+  
+  # Find missing rows
+  miss <- miss |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      missing_vars = {
+        vals <- dplyr::pick(dplyr::all_of(common))
+        nm   <- names(vals)
+        miss <- vapply(vals, function(x) is.na(x)[1], logical(1))
+        paste(nm[miss], collapse = ", ")
       }
-    }
-    openxlsx::writeData(wb, sheet = ds, x = flagged,
-                        startRow = start_row, colNames = write_header)
-  }
-  return(flagged_list)
+    ) |>
+    dplyr::group_by(SUBJECT_ID, SITEID) |>
+    dplyr::slice(1) |> ## Only one record per subject_id/siteid
+    dplyr::ungroup() |>
+    dplyr::filter(missing_vars != "") |>
+    dplyr::select(SUBJECT_ID, SITEID, missing_vars) |> ## only keep subject_id, siteid columns per issue
+    dplyr::mutate(`.__issue_msg` = paste("Missing values in", missing_vars)) |>
+    (\(x) add_issue_meta(x, issue = x$`.__issue_msg`, type = "raw"))() |>
+    dplyr::select(-`.__issue_msg`, -missing_vars) 
+  
+  miss[] <- lapply(miss, as.character)
+  miss
+}
+
+check_missing_key_vars <- function(datasets_pool, wb,
+                                   target_vars = NULL, dataset_no = NULL,
+                                   visit_info_df = NULL) {
+  res <- per_dataset(
+    datasets_pool, dataset_no, visit_info_df,
+    .fn = function(df, ds, ...) compute_missing_key_vars(df, ds, target_vars)
+  )
+  
+  purrr::iwalk(res, ~ wb_append(wb, .y, .x))
+  res
 }
 
 #' Check for duplicate visits with the same date
@@ -139,61 +175,67 @@ check_missing_key_vars <- function(datasets_pool, wb,
 #' @param output_tab Output tab
 #' @param custom_code_list Named list of custom check functions
 #' @export
+compute_duplicate_visit_date <- function(df, ds, visit_date_col, visit_label_col, id_cols) {
+  if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) return(NULL) ## If visit date column doesn't exist, skip
+  
+  df2 <- df |>
+    dplyr::filter(!is.na(.data[[visit_date_col]])) |> 
+    filter_exclude_unscheduled(visit_label_col) ## filter unscheduled visits
+  
+  dups <- df2 |>
+    dplyr::group_by(.data[[id_cols[2]]], .data[[visit_date_col]]) |>  
+    dplyr::filter(dplyr::n() > 1) |>
+    dplyr::ungroup()
+  if (!nrow(dups)) return(NULL)
+  
+  order_cols <- c(id_cols[2], visit_date_col, intersect(visit_label_col, names(dups)))
+  dups <- dplyr::arrange(dups, dplyr::across(dplyr::all_of(order_cols))) |>
+    dplyr::group_by(.data[[id_cols[2]]], .data[[visit_date_col]]) |>
+    dplyr::summarise(
+      SUBJECT_ID = dplyr::first(.data[[id_cols[2]]]),
+      SITEID     = dplyr::first(.data[[id_cols[1]]]),
+      visit_label = {
+        if (!is.na(visit_label_col) && visit_label_col %in% names(cur_data_all())) {
+          vals <- .data[[visit_label_col]]
+          if (all(is.na(vals))) NA_character_ else paste(unique(vals), collapse = ", ")
+        } else {
+          NA_character_
+        }
+      },
+      .groups = "drop"
+    )
+  
+  dups <- dups |>
+    dplyr::mutate(
+      `.__issue_msg` = dplyr::if_else(
+        is.na(.data$visit_label) | .data$visit_label == "",
+        "Duplicate records within the same date",
+        paste("Duplicate records within the same date for", .data$visit_label)
+      )
+    ) |>
+    (\(x) add_issue_meta(x, issue = x$`.__issue_msg`, type = "raw"))() |>
+    dplyr::select(-`.__issue_msg`)  ## Duplicate visits within the same date for Visit 2, Visit 3
+} 
+
 check_duplicate_visit_date <- function(datasets_pool, wb,
-                                       target_vars = NULL,
-                                       dataset_no = NULL,
+                                       target_vars = NULL, dataset_no = NULL,
                                        visit_info_df = NULL,
-                                       output_tab = NULL,
-                                       custom_code_list = NULL) {
-
-  datasets <- setdiff(names(datasets_pool), dataset_no)
-  dup_list <- list()
-  
-  for (ds_name in datasets) {
-    df <- datasets_pool[[ds_name]]
-    if (is.null(df) || nrow(df) == 0) { message("Dataset empty: ", ds_name); next }
-
-    info_row <- dplyr::filter(visit_info_df, dataset == ds_name)
-    if (nrow(info_row) == 0) { message("Skip: ", ds_name, " no visit_info."); next }
-
-    ## visit date and label columns must exist
-    visit_date_col <- info_row$visit_date_col
-    visit_label_col <- info_row$visit_label_col
-    if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) {
-      warning("Skip: ", ds_name, " - visit_date_col not found."); next
-    }
-
-    df <- dplyr::filter(df, !is.na(.data[[visit_date_col]]))
-    if (!is.na(visit_label_col) && visit_label_col %in% names(df)) {
-      df <- dplyr::filter(df, !grepl("unscheduled", .data[[visit_label_col]], ignore.case = TRUE))
-    }
-
-    if (!is.null(custom_code_list) && ds_name %in% names(custom_code_list)) {
-      dups <- custom_code_list[[ds_name]](df, visit_date_col)
-    } else {
-      dups <- df |>
-        dplyr::group_by(SUBJECT_ID, .data[[visit_date_col]]) |>
-        dplyr::filter(dplyr::n() > 1) |>
-        dplyr::ungroup()
-    }
-
-    if (nrow(dups) == 0) next
-    dups <- raw_process(dplyr::arrange(dups, SUBJECT_ID, .data[[visit_date_col]], .data[[visit_label_col]]),
-                        issue = "Duplicate visits with the same date")
-    
-    dup_list[[ds_name]] <- dups
-
-    if (!(ds_name %in% names(wb))) {
-      openxlsx::addWorksheet(wb, ds_name); start_row <- 1; write_header <- TRUE
-    } else {
-      existing_df <- tryCatch(openxlsx::readWorkbook(wb, sheet = ds_name), error = function(e) NULL)
-      if (is.null(existing_df)) { start_row <- 1; write_header <- TRUE }
-      else { start_row <- nrow(existing_df) + 2; write_header <- FALSE }
-    }
-    openxlsx::writeData(wb, ds_name, dups, startRow = start_row, colNames = write_header)
-  }
-  
-  return(dup_list)
+                                       output_tab = NULL, custom_code_list = NULL,
+                                       id_cols = c("SITEID", "SUBJECT_ID")) {
+  res <- per_dataset(
+    datasets_pool, dataset_no, visit_info_df,
+    .fn = function(df, ds, visit_date_col, visit_label_col, id_cols) {
+      if (!is.null(custom_code_list) && ds %in% names(custom_code_list)) {
+        out <- custom_code_list[[ds]](df, visit_date_col)
+        if (is.null(out) || !nrow(out)) return(NULL)
+        return(add_issue_meta(out, "Duplicate visits with the same date", type = "raw"))
+      }
+      compute_duplicate_visit_date(df, ds, visit_date_col, visit_label_col, id_cols)
+    },
+    id_cols = id_cols
+  )
+  purrr::iwalk(res, ~ wb_append(wb, .y, .x))
+  res
 }
 
 #' Check for visits after ED
@@ -208,72 +250,56 @@ check_duplicate_visit_date <- function(datasets_pool, wb,
 #'   with visits after ED for the corresponding dataset.
 #'   If no datasets have violations, returns an empty list.
 #' @export
+get_ed_dates <- function(ed_ds,
+                         id_col = "SUBJECT_ID",
+                         date_col = "DSSTDAT",
+                         form_col = "FORMEID",
+                         forms = c("DS6001_LV6","DS6001_LV5")) {
+  if (is.null(ed_ds) || !(date_col %in% names(ed_ds))) return(NULL)
+  ed_ds |>
+    dplyr::filter(.data[[form_col]] %in% forms, .data[[date_col]] != "") |>
+    dplyr::mutate(ED_DATE = as.Date(.data[[date_col]])) |>
+    dplyr::select(dplyr::all_of(c(id_col, "ED_DATE")))
+}
+
+compute_visit_after_ed <- function(df, ds, visit_date_col, visit_label_col, ed_dates) {
+  if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) return(NULL)
+  
+  df2 <- df |>
+    dplyr::mutate(VISIT_DATE = as.Date(.data[[visit_date_col]])) |>
+    dplyr::filter(!is.na(.data$VISIT_DATE)) |>
+    dplyr::inner_join(ed_dates, by = "SUBJECT_ID") |>
+    dplyr::filter(.data$VISIT_DATE > .data$ED_DATE)
+  
+  if ("VISITNUM" %in% names(df2))
+    df2 <- dplyr::filter(df2, !(.data$VISITNUM %in% c("999","997","801","802","803")))
+  if (!nrow(df2)) return(NULL)
+  
+  add_issue_meta(dplyr::select(df2, -VISIT_DATE, -ED_DATE),
+                 "Visit occurred after ED date", type = "raw")
+}
+
 check_visit_after_ED <- function(datasets_pool, wb,
-                                 dataset_no = NULL,
-                                 visit_info_df = NULL,
-                                 output_tab = NULL,
-                                 other_datasets = NULL) {
-  ed_ds <- datasets_pool[["ds6001"]]
-  if (is.null(ed_ds) || !("DSSTDAT" %in% names(ed_ds))) {
+                                 dataset_no = NULL, visit_info_df = NULL,
+                                 output_tab = NULL, other_datasets = NULL) {
+  ed_dates <- get_ed_dates(datasets_pool[["ds6001"]])
+  if (is.null(ed_dates)) {
     warning("ED dataset missing or DSSTDAT not found.")
     return(NULL)
   }
-
-  ed_dates <- ed_ds |>
-    dplyr::filter(FORMEID %in% c("DS6001_LV6", "DS6001_LV5"), DSSTDAT != "") |>
-    dplyr::mutate(ED_DATE = as.Date(DSSTDAT)) |>
-    dplyr::select(SUBJECT_ID, ED_DATE)
-
-  # --- collect results here ---
-  results_list <- list()
-
-  for (ds_name in other_datasets) {
-    df <- datasets_pool[[ds_name]]
-    if (is.null(df) || nrow(df) == 0) {
-      message("Empty: ", ds_name)
-      next
+  keep <- intersect(other_datasets %||% names(datasets_pool), names(datasets_pool))
+  
+  res <- per_dataset(
+    datasets_pool[keep], dataset_no = NULL, visit_info_df,
+    .fn = function(df, ds, visit_date_col, visit_label_col, ...) {
+      compute_visit_after_ed(df, ds, visit_date_col, visit_label_col, ed_dates)
     }
-
-    visit_date_col <- dplyr::filter(visit_info_df, dataset == ds_name) |> dplyr::pull(visit_date_col)
-    if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) {
-      warning("Skip: ", ds_name, " - visit_date_col not found.")
-      next
-    }
-
-    df <- dplyr::mutate(df, VISIT_DATE = as.Date(.data[[visit_date_col]])) |>
-      dplyr::inner_join(ed_dates, by = "SUBJECT_ID") |>
-      dplyr::filter(!is.na(VISIT_DATE), !is.na(ED_DATE))
-
-    filtered <- dplyr::filter(df, VISIT_DATE > ED_DATE)
-    if ("VISITNUM" %in% names(filtered)) {
-      filtered <- dplyr::filter(filtered, !(VISITNUM %in% c("999", "997", "801", "802", "803")))
-    }
-
-    if (nrow(filtered) == 0) next
-
-    # --- save to results list ---
-    results_list[[ds_name]] <- filtered
-
-    # --- write to Excel as before ---
-    raw <- raw_process(dplyr::select(filtered, -VISIT_DATE, -ED_DATE),
-                       "Visit occurred after ED date")
-
-    if (!(ds_name %in% names(wb))) {
-      openxlsx::addWorksheet(wb, ds_name); start_row <- 1; write_header <- TRUE
-    } else {
-      existing_df <- tryCatch(openxlsx::readWorkbook(wb, sheet = ds_name), error = function(e) NULL)
-      if (is.null(existing_df)) {
-        start_row <- 1; write_header <- TRUE
-      } else {
-        start_row <- nrow(existing_df) + 2; write_header <- FALSE
-      }
-    }
-    openxlsx::writeData(wb, ds_name, raw, startRow = start_row, colNames = write_header)
-  }
-
-  # --- return collected results ---
-  return(results_list)
+  )
+  purrr::iwalk(res, ~ wb_append(wb, .y, .x))
+  res
 }
+
+
 
 #' Check for overlapped visits
 #'
@@ -288,81 +314,53 @@ check_visit_after_ED <- function(datasets_pool, wb,
 #'   If no datasets have overlaps, returns an empty list.
 #'
 #' @export
+compute_visit_overlap <- function(df, ds, visit_date_col, visit_label_col,
+                                  id_cols = c("SITEID","SUBJECT_ID")) {
+  if (is.na(visit_date_col) || !(visit_date_col %in% names(df))) return(NULL)
+  
+  ds2 <- df |>
+    filter_exclude_unscheduled(visit_label_col) |>
+    derive_visit_num(visit_label_col) |>
+    dplyr::mutate(VISIT_DATE = as.Date(.data[[visit_date_col]])) |>
+    dplyr::filter(!is.na(.data$VISIT_DATE)) |>
+    dplyr::filter(!is.na(.data$VISIT_NUM), !(.data$VISIT_NUM %in% c(999, 997))) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(id_cols))) |>
+    dplyr::arrange(.data$VISIT_NUM, .by_group = TRUE) |>
+    dplyr::mutate(PREV_DATE = dplyr::lag(.data$VISIT_DATE),
+                  OVERLAP_FL = .data$VISIT_DATE < .data$PREV_DATE) |>
+    dplyr::ungroup()
+  
+  # 把“违规行”和“其前一条行”凑成一组
+  overlap_rows <- dplyr::filter(ds2, .data$OVERLAP_FL)
+  if (!nrow(overlap_rows)) return(NULL)
+  
+  prior_rows <- dplyr::inner_join(
+    ds2,
+    dplyr::select(overlap_rows, dplyr::all_of(id_cols),
+                  CUR_VISITNUM = .data$VISIT_NUM, PREV_DATE = .data$PREV_DATE),
+    by = setNames(c(id_cols, "VISIT_DATE"), c(id_cols, "PREV_DATE"))
+  )
+  
+  raw0 <- dplyr::bind_rows(overlap_rows, prior_rows) |>
+    dplyr::arrange(dplyr::across(dplyr::all_of(c(id_cols, "VISIT_NUM", "VISIT_DATE")))) |>
+    dplyr::select(-.data$PREV_DATE, -.data$OVERLAP_FL, -.data$VISIT_DATE, -.data$CUR_VISITNUM)
+  
+  add_issue_meta(raw0, "Overlapped visits: later visit has earlier date", type = "raw")
+}
+
 check_visit_overlap <- function(datasets_pool, wb,
-                                dataset_no = NULL,
-                                visit_info_df = NULL,
-                                output_tab = NULL) {
-  datasets <- setdiff(names(datasets_pool), dataset_no)
-
-  # --- collect results here ---
-  results_list <- list()
-
-  for (ds_name in datasets) {
-    ds <- datasets_pool[[ds_name]]
-    if (is.null(ds) || nrow(ds) == 0) { message("Empty: ", ds_name); next }
-
-    info_row <- dplyr::filter(visit_info_df, dataset == ds_name)
-    if (nrow(info_row) == 0) { message("Skip: ", ds_name, " no visit_info."); next }
-
-    visit_date_col <- info_row$visit_date_col
-    visit_label_col <- info_row$visit_label_col
-    if (is.na(visit_date_col) || !(visit_date_col %in% names(ds))) {
-      warning("Skip: ", ds_name, " - visit_date_col not found."); next
-    }
-
-    if ("VISITNUM" %in% names(ds)) {
-      ds <- dplyr::mutate(ds, VISIT_NUM = suppressWarnings(as.numeric(VISITNUM))) |>
-        dplyr::filter(!is.na(VISIT_NUM), !(VISIT_NUM %in% c(999, 997)))
-    } else if (!is.na(visit_label_col) && visit_label_col %in% names(ds)) {
-      ds <- ds |>
-        dplyr::filter(!is.na(.data[[visit_label_col]]),
-                      !grepl("unscheduled", .data[[visit_label_col]], ignore.case = TRUE)) |>
-        dplyr::mutate(
-          VISIT_NUM = suppressWarnings(as.numeric(stringr::str_extract(.data[[visit_label_col]], "\\d+")))
-        ) |>
-        dplyr::filter(!is.na(VISIT_NUM))
-    } else {
-      warning("Skip: ", ds_name, " - cannot determine VISITNUM."); next
-    }
-
-    ds <- dplyr::mutate(ds, VISIT_DATE = as.Date(.data[[visit_date_col]])) |>
-      dplyr::filter(!is.na(VISIT_DATE)) |>
-      dplyr::group_by(SITEID, SUBJECT_ID) |>
-      dplyr::arrange(VISIT_NUM, .by_group = TRUE) |>
-      dplyr::mutate(PREV_DATE = dplyr::lag(VISIT_DATE),
-                    OVERLAP_FL = VISIT_DATE < PREV_DATE) |>
-      dplyr::ungroup()
-
-    overlap_rows <- dplyr::filter(ds, OVERLAP_FL)
-    prior_rows <- dplyr::inner_join(
-      ds,
-      dplyr::select(overlap_rows, SITEID, SUBJECT_ID, CUR_VISITNUM = VISIT_NUM, PREV_DATE),
-      by = c("SITEID", "SUBJECT_ID", "VISIT_DATE" = "PREV_DATE")
-    )
-
-    raw0 <- dplyr::bind_rows(overlap_rows, prior_rows) |>
-      dplyr::arrange(SITEID, SUBJECT_ID, VISIT_NUM, VISIT_DATE) |>
-      dplyr::select(-PREV_DATE, -OVERLAP_FL, -VISIT_DATE, -CUR_VISITNUM, -VISIT_NUM)
-
-    raw <- raw_process(raw0, "Overlapped visits: later visit has earlier date")
-    if (nrow(raw) == 0) next
-
-    # --- save to results list ---
-    results_list[[ds_name]] <- raw
-
-    # --- write to Excel as before ---
-    if (!(ds_name %in% names(wb))) {
-      openxlsx::addWorksheet(wb, ds_name); start_row <- 1; write_header <- TRUE
-    } else {
-      existing_df <- tryCatch(openxlsx::readWorkbook(wb, sheet = ds_name), error = function(e) NULL)
-      if (is.null(existing_df)) { start_row <- 1; write_header <- TRUE }
-      else { start_row <- nrow(existing_df) + 2; write_header <- FALSE }
-    }
-    openxlsx::writeData(wb, ds_name, raw, startRow = start_row, colNames = write_header)
-  }
-
-  # --- return collected results ---
-  return(results_list)
+                                dataset_no = NULL, visit_info_df = NULL,
+                                output_tab = NULL,
+                                id_cols = c("SITEID","SUBJECT_ID")) {
+  res <- per_dataset(
+    datasets_pool, dataset_no, visit_info_df,
+    .fn = function(df, ds, visit_date_col, visit_label_col, id_cols) {
+      compute_visit_overlap(df, ds, visit_date_col, visit_label_col, id_cols)
+    },
+    id_cols = id_cols
+  )
+  purrr::iwalk(res, ~ wb_append(wb, .y, .x))
+  res
 }
 
 

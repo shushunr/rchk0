@@ -7,14 +7,14 @@
 check_ds(
   ds = ds6001,
   formeid = FORMEID,
-  scr_dt = NULL,
-  scr_reas = NULL,
-  trt_dt = NULL,
-  trt_reas = NULL,
-  trtp_dt = NULL,
-  trtp_reas = NULL,
-  fup_dt = NULL,
-  fup_reas = NULL,
+  scr_dt = DSSTDAT2,
+  scr_reas = DSDECOD_13,
+  trt_dt = DSSTDAT3,
+  trt_reas = DSDECOD_7,
+  trtp_dt = DSSTDAT6,
+  trtp_reas = DSDECOD_9,
+  fup_dt = DSSTDAT9,
+  fup_reas = DSDECOD_15,
   visit_info_df = visit_info_df
 )
 }
@@ -27,5 +27,5 @@ check_ds(
 A dataframe that specified each subject's disposition information.
 }
 \description{
-This function checks the DS6001 dataset (for out-sourced study)
+This function checks the ds6001 dataset (for out-sourced study)
 }
