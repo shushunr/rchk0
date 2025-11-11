@@ -2,7 +2,7 @@
 % Please edit documentation in R/report_readme.R
 \name{create_readme_sheet}
 \alias{create_readme_sheet}
-\title{Create a READ_ME worksheet in the output excel (issue tracker)}
+\title{Create a READ_ME worksheet in the output issue tracker}
 \usage{
 create_readme_sheet(wb, study_name = "", all_check, simple_check)
 }
@@ -19,6 +19,6 @@ create_readme_sheet(wb, study_name = "", all_check, simple_check)
 wb
 }
 \description{
-Create a READ_ME worksheet in the output excel (issue tracker)
+Create a READ_ME worksheet in the output issue tracker
 }
 \keyword{internal}

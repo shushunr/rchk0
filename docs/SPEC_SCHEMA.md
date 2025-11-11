@@ -37,7 +37,7 @@ All sheets are read-only (auto-generated), except where specified.
 Stores global metadata of the spec.
 
 | Column | Type | Required | Example | Description |
-|--------------|--------------|--------------|--------------|----------------|
+|---------------|---------------|---------------|---------------|---------------|
 | study_id | string | ✅ | `I7P_MC_DSAF` | Study identifier |
 | generated_at | date | ✅ | `2025-11-11` | Timestamp when the spec was generated |
 | generated_by | string | ✅ | `shushunr` | User or program that generated the spec |
@@ -54,7 +54,7 @@ Stores global metadata of the spec.
 Stores dataset-level summaries from the raw data folder.
 
 | Column | Type | Required | Example | Description |
-|--------------|--------------|--------------|--------------|----------------|
+|---------------|---------------|---------------|---------------|---------------|
 | dataset | string | ✅ | `ae3001` | Dataset name |
 | n_rows | integer | ✅ | `105` | Number of records |
 | n_cols | integer | ✅ | `32` | Number of variables |
@@ -71,7 +71,7 @@ Stores dataset-level summaries from the raw data folder.
 Defines dataset-specific identifiers (used in most checkpoints).
 
 | Column | Type | Required | Example | Description |
-|--------------|--------------|--------------|--------------|----------------|
+|---------------|---------------|---------------|---------------|---------------|
 | dataset | string | ✅ | `sv1001` | Dataset name |
 | subject_id | string | ✅ | `SUBJID` | Subject ID variable name |
 | site_id | string | ✅ | `SITE` | Site ID variable name |
@@ -88,7 +88,7 @@ Contains the configuration for all automated checks to be performed.\
 Each row corresponds to one checkpoint function.
 
 | Column | Type | Required | Example | Description |
-|--------------|--------------|--------------|--------------|----------------|
+|---------------|---------------|---------------|---------------|---------------|
 | checkpoint_name | string | ✅ | `check_missing_key_vars` | Unique checkpoint identifier |
 | function_name | string | ✅ | `compute_missing_key_vars` | R function to execute |
 | function_version | string | ✅ | `0.2.1` | Function version from registry |
@@ -108,7 +108,7 @@ Each row corresponds to one checkpoint function.
 Contains validation errors or missing configurations detected during spec generation.
 
 | Column | Type | Example | Description |
-|----------------|----------------|-----------------|------------------------|
+|-----------------|-----------------|-----------------|----------------------|
 | dataset | string | `sv1001` | Dataset associated with error |
 | checkpoint_name | string | `check_visit_after_ED` | Checkpoint that raised the error |
 | message | string | `visit_date not found in data_info` | Error message text |
@@ -122,7 +122,7 @@ Contains validation errors or missing configurations detected during spec genera
 Optional free-text section for users to record special study-specific logic.
 
 | Column | Type | Example | Description |
-|----------------|----------------|-----------------|------------------------|
+|-----------------|-----------------|-----------------|----------------------|
 | note_id | string | `N001` | Unique note ID |
 | note_text | string | `The LB dataset uses TESTDT instead of VISITDT` | Description of note |
 | added_by | string | `shushunr` | User who added the note |
@@ -143,7 +143,7 @@ Optional free-text section for users to record special study-specific logic.
 ## 5. Validation Rules
 
 | Rule | Description | Validation Type |
-|-----------------|--------------------------|------------------------------|
+|------------------|-------------------------|-----------------------------|
 | All required columns must be present | Missing column will raise error tab entry | Critical |
 | Each dataset in DATA_INFO must exist in SNAPSHOT | Prevents referencing non-existent datasets | Warning |
 | logic_hash change triggers warning | Reminds users to re-review logic changes | Warning |
@@ -155,7 +155,7 @@ Optional free-text section for users to record special study-specific logic.
 ## 6. Example Spec File (Preview)
 
 | checkpoint_name | function_name | parameters_json | enabled |
-|--------------------|-----------------|-------------------|-----------------|
+|-------------------|------------------|------------------|------------------|
 | check_missing_key_vars | compute_missing_key_vars | `{ "target_vars": ["VISIT","VISITNUM","EVENT"] }` | TRUE |
 | check_duplicate_visit_date | compute_duplicate_visit_date | `{ "visit_label_col": "EVENT", "visit_date_col": "EVENTDT" }` | TRUE |
 
@@ -164,6 +164,6 @@ Optional free-text section for users to record special study-specific logic.
 ## 7. Change Log
 
 | Version | Date | Author | Description |
-|-----------------|----------------|----------------|------------------------|
+|-----------------|-----------------|-----------------|----------------------|
 | 1.0 | 2025-11-11 | Shushun Ren | Initial schema definition for rchk0 Spec file |
 | 1.1 | TBD | TBD | Add new sheet for issue history comparison |
