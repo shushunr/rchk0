@@ -1,0 +1,67 @@
+---
+title: "Raw Data Issue Tracker — One-Pager"
+author: "`r params$author`"
+date: "`r params$date`"
+output:
+  html_document:
+    toc: false
+    df_print: paged
+  pdf_document: default
+  word_document: default
+params:
+  repo: "rchk0"
+  author: "Shushun Ren"
+  date: "`r format(Sys.Date())`"
+  status: "Draft"
+  goals_deadlines:
+    - [ "M1", "Shiny parameter UI + YAML config builder", "Dec 2025" ]
+    - [ "M2", "Spec Generator Program 1 (Excel+validation)", "Jan 2026" ]
+    - [ "M3", "Issue Tracker Program 2 + persistence", "Feb 2026" ]
+    - [ "M4", "Integrated tests + docs", "Mar 2026" ]
+---
+
+# 1. Background / Problem
+
+Clinical raw datasets transfer frequently (weekly/biweekly). Manual checks & Excel tracking are: - Time-consuming and error-prone\
+- Hard to synchronize across studies\
+- Difficult to audit longitudinally
+
+We need a **modular, spec-driven, reproducible** tracker minimizing manual maintenance while preserving transparency.
+
+# 2. Goal
+
+Two-program workflow:
+
+| Program | Description | Output |
+|------------------------|------------------------|------------------------|
+| Program 1 – Spec Generator | Read raw → auto-generate study params → standardized spec | `spec.xlsx` |
+| Program 2 – Issue Tracker | Read spec → run QC checkpoints → issue outputs & history | `issue_log.xlsx` |
+
+**Key objectives** - Minimize manual edits across transfers\
+- Centralize configuration (YAML + Shiny)\
+- Versioning + persistence（`instance_id`, `issue_group_id`）\
+- Pre-defined & user-defined checkpoints
+
+# 3. Non-Goals
+
+-   No manual data correction
+-   No study-specific hard-coding
+-   No strict dependency on CDISC flavors
+
+# 4. Solution Overview
+
+Workflow（Spec 是**只读快照**，参数来源于 Shiny → `study_config.yml`）：
+
+-   Program 1：生成 `spec.xlsx`（README / raw_snapshot / data_info / checkpoints / errors）
+-   Program 2：按 spec 执行检查，输出 issue 汇总与各数据集 Sheet
+
+# 5. Technical Highlights
+
+-   R 包模块化；参数化 YAML → 动态生成 spec
+-   Hash-based 追踪：`instance_id`（严格）、`issue_group_id`（跨表聚合）
+-   长期追踪：New / Persisting / Resolved / Updated
+-   导出 Excel/HTML，或入库（SQLite / DuckDB）
+
+# 6. Timeline (Milestones)
+
+\`\``{r, echo=FALSE} knitr::kable(   data.frame(     Milestone = sapply(params$goals_deadlines,`[[`, 1),     Description = sapply(params$goals_deadlines,`[[`, 2),     Target = sapply(params$goals_deadlines,`[[\`, 3) ), align = "lll" )
