@@ -1,5 +1,5 @@
 # R/report_readme.R
-#' Create a READ_ME worksheet in the output excel (issue tracker)
+#' Create a READ_ME worksheet in the output issue tracker
 #' @param wb openxlsx workbook
 #' @param study_name character, e.g., "I7P-MC-DSAF"
 #' @param all_check data.frame from spec sheet "ALL_DATASETS"
