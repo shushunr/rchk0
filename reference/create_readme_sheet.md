@@ -1,6 +1,6 @@
-# Create a READ_ME worksheet in the output excel (issue tracker)
+# Create a READ_ME worksheet in the output issue tracker
 
-Create a READ_ME worksheet in the output excel (issue tracker)
+Create a READ_ME worksheet in the output issue tracker
 
 ## Usage
 
