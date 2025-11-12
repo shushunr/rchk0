@@ -23,7 +23,7 @@ Dashboard (Shiny / HTML report)
 ## 2. Core Modules
 
 | Module | Description |
-|------------------------------------|------------------------------------|
+|----|----|
 | Program 1: Spec Generator | Reads raw data and metadata to create a standardized Excel spec (`spec.xlsx`) |
 | Program 2: Issue Tracker | Executes QC checkpoints based on the spec and produces outputs with issue persistence tracking. |
 | Shiny Config App | Builds study_config.yml (Study ID, dataset mapping, params) |
@@ -38,7 +38,7 @@ Dashboard (Shiny / HTML report)
 ## 4. Spec Structure
 
 | Sheet | Description | Editable |
-|------------------------|------------------------|-------------------------|
+|----|----|----|
 | README | Meta：generated_at/by, engine_version, spec_schema_version | No |
 | Raw Snapshot | Per-dataset：rows/cols/load status/dates/schema hash | No |
 | Data Info | Mapping：Subject ID / Site ID / Visit Date / Visit Label | Yes（via Shiny） |
@@ -58,7 +58,7 @@ Dashboard (Shiny / HTML report)
 Note: Issue will be matched based on unique identifiers.
 
 | Old status of the issue | New status of the issue | Indication | Updated Status |
-|------------------|------------------|------------------|------------------|
+|----|----|----|----|
 | Contains "permanent" | ANY | Old issue was determined as a permanent issue, **whether or not the issue still exists in the new data transfer**, user will add "permanent" to the status | Old status remained |
 | Contains "non-issue" | ANY | Old issue was detected, but is not an actual issue (fake issue from automatic checks), user will add "non-issue" to the status | Old status remained |
 | NA | New | Issue doesn't exist in old tracker, yet occurs in the new tracker | New |
