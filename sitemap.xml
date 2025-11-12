@@ -19,6 +19,7 @@
 <url><loc>/reference/convert_dates_to_char.html</loc></url>
 <url><loc>/reference/create_readme_sheet.html</loc></url>
 <url><loc>/reference/format_issue_log_sheets.html</loc></url>
+<url><loc>/reference/generate_spec.html</loc></url>
 <url><loc>/reference/get_ed_dates.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
 <url><loc>/reference/issue_envelope.html</loc></url>
@@ -31,5 +32,6 @@
 <url><loc>/reference/safe_as_character.html</loc></url>
 <url><loc>/reference/sv_ds.html</loc></url>
 <url><loc>/reference/update_issue_log.html</loc></url>
+<url><loc>/reference/use_spec_builder_app.html</loc></url>
 </urlset>
 

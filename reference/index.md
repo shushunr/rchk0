@@ -24,6 +24,8 @@
   Date/POSIX columns in a data.frame to character
 - [`format_issue_log_sheets()`](format_issue_log_sheets.md) : Format all
   issue log sheets in a workbook
+- [`generate_spec()`](generate_spec.md) : Generate spec workbook (and
+  optional YAML) for raw-data checks
 - [`get_ed_dates()`](get_ed_dates.md) : Check for visits after ED
 - [`load_dataset()`](load_dataset.md) : Load raw datasets into a named
   list, and also assign each to environment
@@ -36,3 +38,5 @@
 - [`sv_ds()`](sv_ds.md) : Check SV1001 visits not present in DS6001
 - [`update_issue_log()`](update_issue_log.md) : Update issue log by
   merging new and old Excel sheets
+- [`use_spec_builder_app()`](use_spec_builder_app.md) : Launch the Spec
+  Builder App
