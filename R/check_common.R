@@ -330,7 +330,6 @@ compute_visit_overlap <- function(df, ds, visit_date_col, visit_label_col,
                   OVERLAP_FL = .data$VISIT_DATE < .data$PREV_DATE) |>
     dplyr::ungroup()
   
-  # 把“违规行”和“其前一条行”凑成一组
   overlap_rows <- dplyr::filter(ds2, .data$OVERLAP_FL)
   if (!nrow(overlap_rows)) return(NULL)
   

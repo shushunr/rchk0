@@ -38,10 +38,10 @@ multi_site <- function(datasets_pool, wb, output_tab = NULL,
     }
     
     df %>% 
-      transmute(SUBJECT_ID = as.character(SUBJECT_ID),
-             SITEID = as.character(SITEID),
+      transmute(SUBJECT_ID = as.character(.data[[subject_col]]),
+             SITEID = as.character(.data[[site_col]]),
              dataset_name = ds_name) %>% 
-      filter(!is.na(SUBJECT_ID), !is.na(SITEID))
+      filter(!is.na(.data[[subject_col]]), !is.na(.data[[site_col]]))
   })
   
   if (nrow(all_subject_sites) == 0) {
