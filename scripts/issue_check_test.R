@@ -1,4 +1,6 @@
 
+## Issue check test - Simulation of user behavior
+
 rm(list = ls())
 library(dplyr)
 library(openxlsx)
@@ -6,7 +8,7 @@ library(haven)
 library(stringr)
 library(purrr)
 library(tidyr)
-
+library(shiny)
 library(rchk0)
 
 ##### Example study: DSAF #####
@@ -20,30 +22,30 @@ DATA_PATH <- "/lillyce/qa/ly3041658/i7p_mc_dsaf/prelock/data/raw/shared/" # wher
 STUDY_NAME <- "I7P-MC-DSAF" ## Please enter your full study name
 MASTER_PATH  <- paste0(MODULE_PATH, "output/DSAF_Stats_issues_log_cumulative.xlsx") ## final excel output file
 
-run_tracker(DATA_PATH, SPEC_PATH, MASTER_PATH, study_name = "I7P-MC-DSAF",
-            exclude_prefixes = c("cdms", "sys"),
-            exclude_names = c("record_count", "rtsm_sbjct_data", "sd", "mhpresp1001"))
+# run_tracker(DATA_PATH, SPEC_PATH, MASTER_PATH, study_name = "I7P-MC-DSAF",
+#             exclude_prefixes = c("cdms", "sys"),
+#             exclude_names = c("record_count", "rtsm_sbjct_data", "sd", "mhpresp1001"))
 
 
 ##### Example study: KIAC #####
 
 # --- Important: Change all the directories ---
-rm(list = ls())
-MODULE_PATH <- "/lillyce/qa/ly3541860/j3k_mc_kiac/intrm1/programs/component_modules/data issue/" ## data issue parent folder
-SPEC_PATH <- paste0(MODULE_PATH, "documentation/KIAC_raw_data_check_issue_spec.xlsx") ## issue spec location
-DATA_PATH <- "/lillyce/qa/ly3541860/j3k_mc_kiac/prelock/data/raw/shared/" # where raw data have been located
-STUDY_NAME <- "J3K-MC-KIAC" ## Please enter your full study name
-MASTER_PATH  <- paste0(MODULE_PATH, "output/KIAC_Stats_issues_log_cumulative.xlsx") ## final excel output file
+# rm(list = ls())
+# MODULE_PATH <- "/lillyce/qa/ly3541860/j3k_mc_kiac/intrm1/programs/component_modules/data issue/" ## data issue parent folder
+# SPEC_PATH <- paste0(MODULE_PATH, "documentation/KIAC_raw_data_check_issue_spec.xlsx") ## issue spec location
+# DATA_PATH <- "/lillyce/qa/ly3541860/j3k_mc_kiac/prelock/data/raw/shared/" # where raw data have been located
+# STUDY_NAME <- "J3K-MC-KIAC" ## Please enter your full study name
+# MASTER_PATH  <- paste0(MODULE_PATH, "output/KIAC_Stats_issues_log_cumulative.xlsx") ## final excel output file
 # 
 # ##### Example study: DSAG #####
 # 
 # # --- Important: Change all the directories ---
-rm(list = ls())
-MODULE_PATH <- "/lillyce/qa/ly3041658/i7p_mc_dsag/prelock/programs/data issue/DSAG/" ## data issue parent folder
-SPEC_PATH <- paste0(MODULE_PATH, "documentation/DSAG_raw_data_check_issue_spec.xlsx") ## issue spec location
-DATA_PATH <- "/lillyce/qa/ly3041658/i7p_mc_dsag/prelock/data/raw/shared/" # where raw data have been located
-STUDY_NAME <- "I7P-MC-DSAG" ## Please enter your full study name
-MASTER_PATH  <- paste0(MODULE_PATH, "output/DSAG_Stats_issues_log_cumulative.xlsx") ## final excel output file
+# rm(list = ls())
+# MODULE_PATH <- "/lillyce/qa/ly3041658/i7p_mc_dsag/prelock/programs/data issue/DSAG/" ## data issue parent folder
+# SPEC_PATH <- paste0(MODULE_PATH, "documentation/DSAG_raw_data_check_issue_spec.xlsx") ## issue spec location
+# DATA_PATH <- "/lillyce/qa/ly3041658/i7p_mc_dsag/prelock/data/raw/shared/" # where raw data have been located
+# STUDY_NAME <- "I7P-MC-DSAG" ## Please enter your full study name
+# MASTER_PATH  <- paste0(MODULE_PATH, "output/DSAG_Stats_issues_log_cumulative.xlsx") ## final excel output file
 # 
 # ##### Using FVAA raw data as an example #####
 # # --- Important: Change all the directories ---
@@ -96,6 +98,74 @@ data_info0 <- preprocess(data_list, SPEC_PATH, export_to_env = TRUE) ## preproce
 ## output dataset info and preprocessed dataset
 visit_info_df <- data_info0$visit_info_df ## Please check this visit info
 datasets_pool <- data_info0$datasets_pool ## preprocessed datasets as a list
+
+use_spec_builder_app() ## shiny app: dataset info, checkpoints, etc. --> Generate a spec
+
+
+
+## Run checkpoints based on the current transfer, write directly in the excel
+# ----- 1. Automatic Issues -----
+
+
+
+# ----- 2. Manual Issues -----
+## 2.1 Customized code that will be applied every transfer
+
+## 2.2 Issues that need manual updates in the excel
+
+# ----- 3. output excel -----
+## 3.1 Choose columns you want to keep (for each tab)
+## 3.2 Add issue_log sheet (which includes all the issues)
+
+
+## put all functions into a list
+check_functions <- list(
+  check_missing_visit,
+  check_dup_records,
+  check_visit_after_ED,
+  check_invalid_date
+)
+
+## run the checkpoints on EACH DATASET
+all_issues <- purrr::map_dfr(dataset_list, function(ds_name) {
+  df <- datasets_pool[[ds_name]]
+  
+  purrr::map_dfr(check_functions, function(fun) {
+    fun(df, ds_name, spec)
+  })
+})
+
+
+# ----- 4. Update issue log -----
+
+
+
+# ----- 5. Final Workbook -----
+## 5.1 README: Readme sheet for user, intro, important things
+## -- Predefined formats, include all the checkpoints needed (might change)
+
+## 5.2 Issue_log: Include all the current/historical issues (EDC/eCOA)
+## - SUBJECT_ID
+## - SITEID
+## - Issue_type
+## - Issue_name (Issue_noted_by_Lilly_Stats)
+## - First_occurred_date
+## - Last_check_date
+## - Status
+## - Importance
+
+## 5.3 Tabs for all datasets: Include all the current/historical issues, but with more specific info
+## - Date_occurred (Date the tracker was run)
+## - SUBJECT_ID
+## - SITEID
+## - All the necessary columns (User defined and will be kept throughout the study. Had better <= 5)
+## - Issue_type
+## - Issue_noted_by_Lilly_Stats (editable by stats, all the comments will be carried forward)
+## - DM_Comment_or_resolution (editable by DM, all the comments will be carried forward)
+## - Status (will automatic change based on both OLD and NEW status)
+## - Importance (Automatically carried forward)
+
+
 
 
 
