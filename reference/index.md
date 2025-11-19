@@ -2,7 +2,6 @@
 
 ## All functions
 
-- [`add_issue_meta()`](add_issue_meta.md) : Add issue metadata
 - [`check_ED()`](check_ED.md) : Check ED visit consistency across
   datasets
 - [`check_ds()`](check_ds.md) : Disposition Dataset Check

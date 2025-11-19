@@ -28,4 +28,4 @@ Curated list of exported functions, grouped by topic.
 
 - [`compress_ranges()`](compress_ranges.md),
   [`convert_dates_to_char()`](convert_dates_to_char.md),
-  [`issue_envelope()`](issue_envelope.md)
+  `issue_envelope()`

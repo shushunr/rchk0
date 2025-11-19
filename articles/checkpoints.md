@@ -9,7 +9,7 @@ rule applied to raw clinical datasets.
 - Audience: Statistical Analysts, Data Managers, QC Programmers
 - Purpose: Understand the purpose, parameters, and outputs of each
   check.
-- Last Updated: 2025-11-14
+- Last Updated: 2025-11-19
 
 ## Checkpoints list
 

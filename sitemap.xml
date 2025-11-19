@@ -7,7 +7,6 @@
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
-<url><loc>/reference/add_issue_meta.html</loc></url>
 <url><loc>/reference/check_ED.html</loc></url>
 <url><loc>/reference/check_ds.html</loc></url>
 <url><loc>/reference/check_ed_v801.html</loc></url>
@@ -23,7 +22,6 @@
 <url><loc>/reference/generate_spec.html</loc></url>
 <url><loc>/reference/get_ed_dates.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
-<url><loc>/reference/issue_envelope.html</loc></url>
 <url><loc>/reference/load_dataset.html</loc></url>
 <url><loc>/reference/multi_site.html</loc></url>
 <url><loc>/reference/preprocess.html</loc></url>
